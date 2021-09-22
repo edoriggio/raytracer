@@ -1,0 +1,54 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+
+\setlength\paperwidth{20.999cm}\setlength\paperheight{29.699cm}\setlength\voffset{-1in}\setlength\hoffset{-1in}\setlength\topmargin{1.499cm}\setlength\headheight{12pt}\setlength\headsep{0cm}\setlength\footskip{1.131cm}\setlength\textheight{25cm}\setlength\oddsidemargin{2.499cm}\setlength\textwidth{15.999cm}
+
+\begin{document}
+\begin{center}
+\hrule
+
+\vspace{.4cm}
+{\bf {\Huge Assignment 1}} \\
+\vspace{.2cm}
+{\bf Computer Graphics}
+\vspace{.2cm}
+\end{center}
+{\bf Edoardo Riggio } (edoardo.riggio@usi.ch) \hspace{\fill}  \today \\
+\hrule
+\vspace{.2cm}
+
+\section*{Exercise 1}
+\subsection*{Exercise 1.1}
+In order to compute the cosine of the angle $\alpha$ between the two vectors, we need to use the dot product equation, namely:
+\begin{equation}
+  <a,b>~=~||a|| \cdot ||b|| \cdot \cos(\alpha)
+\end{equation}
+Thus by moving the elements of the equation around, we obtain that:
+\begin{align*}
+  \cos(\alpha)~& =~\displaystyle\frac{<a,b>}{||a|| \cdot ||b||} \\
+  \cos(\alpha)~& =~\displaystyle\frac{<a,b>}{\sqrt{2 + 1^2 + 0^2} \cdot \sqrt{1^2 + 1^2 + 1^2}} \\
+  \cos(\alpha)~& = ~\displaystyle\frac{<a,b>}{\sqrt{3} \cdot \sqrt{3}} \\
+  \cos(\alpha)~& = ~\displaystyle\frac{\sqrt{2}+1}{3} \\
+  \cos(\alpha)~& = ~0.9107
+\end{align*}
+
+\subsection*{Exercise 1.2}
+In order to see whether the vector is perpendicular to both the given vectors, we need to use the cross product. The $x$, $y$ and $z$ elements of vector $z$ are:
+\begin{align*}
+  z_x~& = ~(1 \cdot 1) - (0 \cdot 1) = 1 \\
+  z_y~& = ~(0 \cdot 1) - (\sqrt{2} \cdot 1) = -\sqrt{2} \\
+  z_z~& = ~(\sqrt{2} \cdot 1) - (1 \cdot 1) = \sqrt{2} - 1
+\end{align*}
+Thus the vector is defined as:
+\[ z = (1, -\sqrt{2}, \sqrt{2}-1)^T \]
+
+\subsection*{Exercise 1.3}
+To calculate $u$ we need to do a multiplication between a matrix and a vector. In our case:
+
+\begin{align*}
+  \begin{pmatrix}1&1&1\\ 2&2&1\\ -1&-3&-3\end{pmatrix}\begin{pmatrix}1\\ -\sqrt{2}\\ \sqrt{2}-1\end{pmatrix}~& = ~\begin{pmatrix}1\cdot \:1+1\cdot \left(-\sqrt{2}\right)+1\cdot \left(\sqrt{2}-1\right)\\ 2\cdot \:1+2\left(-\sqrt{2}\right)+1\cdot \left(\sqrt{2}-1\right)\\ \left(-1\right)\cdot \:1+\left(-3\right)\left(-\sqrt{2}\right)+\left(-3\right)\left(\sqrt{2}-1\right)\end{pmatrix} \\
+  ~& = ~\begin{pmatrix}0\\ 1-\sqrt{2}\\ 2\end{pmatrix}
+\end{align*}
+
+\end{document}
