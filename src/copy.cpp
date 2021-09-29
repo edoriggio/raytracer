@@ -97,7 +97,7 @@ public:
 		t = t1 < t2 ? t1 : t2;
 		intersection = t * ray.direction;
 		
-		glm::vec3 normal = glm::normalize(intersection);
+		glm::vec3 normal = glm::normalize(intersection - c);
 		
 		hit.hit = true;
 		hit.distance = glm::distance(ray.origin, intersection);
@@ -180,8 +180,8 @@ int main(int argc, const char * argv[]) {
 		}
     
 	t = clock() - t;
-	cout<<"It took " << ((float)t)/CLOCKS_PER_SEC << " seconds to render the image." << endl;
-	cout<<"I could render at " << (float)CLOCKS_PER_SEC/((float)t) << " frames per second." << endl;
+	cout << "It took " << ((float)t)/CLOCKS_PER_SEC << " seconds to render the image." << endl;
+	cout << "I could render at " << (float)CLOCKS_PER_SEC/((float)t) << " frames per second." << endl;
     
 	// Writing the final results of the rendering
 	if (argc == 2) {
