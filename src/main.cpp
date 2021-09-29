@@ -159,7 +159,7 @@ int main(int argc, const char * argv[]) {
 	int height = 768; // height of the image
 	float fov = 90; // field of view
 
-	float pixel_size = (2 * tan(fov / 2)) / width; // size of the pixels
+	float pixel_size = (2 * tan((fov / 2) * (M_PI / 180))) / width; // size of the pixels
 	
 	sceneDefinition();
 	
