@@ -10,6 +10,7 @@
 #include "glm/glm.hpp"
 
 #include "Image.h"
+#include "Material.h"
 
 using namespace std;
 
@@ -50,9 +51,22 @@ struct Hit {
 class Object {
 public:
 	glm::vec3 color; ///< Color of the object
+	Material material;
 
 	/** A function computing an intersection, which returns the structure Hit */
 	virtual Hit intersect(Ray ray) = 0;
+
+	/** Function that returns the material struct of the object*/
+	Material getMaterial() {
+		return material;
+	}
+
+	/** Function that set the material
+	 @param material A structure desribing the material of the object
+	*/
+	void setMaterial(Material material) {
+		this->material = material;
+	}
 };
 
 /**
@@ -109,8 +123,50 @@ public:
 	}
 };
 
+/**
+ Light class
+ */
+class Light {
+public:
+	glm::vec3 position; ///< Position of the light source
+	glm::vec3 color; ///< Color/intentisty of the light source
 
+	Light(glm::vec3 position): position(position) {
+		color = glm::vec3(1.0);
+	}
+
+	Light(glm::vec3 position, glm::vec3 color): position(position), color(color) {
+	}
+};
+
+vector<Light *> lights; ///< A list of lights in the scene
 vector<Object *> objects; ///< A list of all objects in the scene
+glm::vec3 ambient_light(1.0, 1.0, 1.0);
+
+/** Function for computing color of an object according to the Phong Model
+ @param point A point belonging to the object for which the color is computed
+ @param normal A normal vector the the point
+ @param view_direction A normalized direction from the point to the viewer/camera
+ @param material A material structure representing the material of the object
+*/
+glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec3 view_direction, Material material) {
+	glm::vec3 color(0.0);
+	
+	/*
+				 
+	 Assignment 2
+	 
+	 Phong model.
+	 Your code should implement a loop over all the lightsourses in the array lights and agredate the contribution of each of them to the final color of the object.
+	 Outside of the loop add also the ambient component from ambient_light.
+				 
+	*/
+	
+	// The final color has to be clamped so the values do not go beyond 0 and 1.
+	color = glm::clamp(color, glm::vec3(0.0), glm::vec3(1.0));
+
+	return color;
+}
 
 /**
  Functions that computes a color along the ray
@@ -118,7 +174,6 @@ vector<Object *> objects; ///< A list of all objects in the scene
  @return Color at the intersection point
  */
 glm::vec3 trace_ray(Ray ray) {
-	
 	// hit structure representing the closest intersection
 	Hit closest_hit;
 	
@@ -137,6 +192,14 @@ glm::vec3 trace_ray(Ray ray) {
 
 	if (closest_hit.hit) {
 		color = closest_hit.object->color;
+		/*
+					 
+		 Assignment 2
+		 
+		 Replace the above line of the code with the call of the function for computing Phong model below.
+					 
+		*/
+		//color = PhongModel(closest_hit.intersection, closest_hit.normal, glm::normalize(-ray.direction), closest_hit.object->getMaterial());
 	} else {
 		color = glm::vec3(0.0, 0.0, 0.0);
 	}
@@ -149,6 +212,29 @@ glm::vec3 trace_ray(Ray ray) {
 void sceneDefinition () {
 	objects.push_back(new Sphere(1.0, glm::vec3(-0, -2, 8), glm::vec3(0.6, 0.9, 0.6)));
 	objects.push_back(new Sphere(1.0, glm::vec3(1, -2, 8), glm::vec3(0.6, 0.6, 0.9)));
+
+	/*
+				 
+	 Assignment 2
+	 
+	 Add here all the objects to the scene. Remember to add them using the new constructor for the sphere with material structure.
+	 You will also need to define the materials.
+	 Example of adding one sphere:
+	 
+	 Material red_specular;
+	 red_specular.diffuse = glm::vec3(1.0f, 0.3f, 0.3f);
+	 red_specular.ambient = glm::vec3(0.1f, 0.03f, 0.03f);
+	 red_specular.specular = glm::vec3(0.5);
+	 red_specular.shininess = 10.0;
+	 
+	 objects.push_back(new Sphere(0.5, glm::vec3(-1,-2.5,6), red_specular));
+	 
+	 
+	 Remember also about adding some lights. For example a white light of intensity 0.4 and position in (0,26,5):
+	 
+	 lights.push_back(new Light(glm::vec3(0, 26, 5), glm::vec3(0.4)));
+	 			 
+	*/
 }
 
 int main(int argc, const char * argv[]) {
