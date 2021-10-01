@@ -1,4 +1,8 @@
 //
+//  Image.h
+//  Raytracer
+//
+
 /**
 @file Image.h
 */
