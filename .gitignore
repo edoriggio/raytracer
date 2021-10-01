@@ -5,3 +5,6 @@
 *.synctex.gz
 
 .vscode
+
+a.out
+result.ppm
