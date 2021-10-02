@@ -158,15 +158,10 @@ glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec3 view_direction
 	glm::vec3 ambient = material.ambient * ambient_light;
 
 	for (Light * source : lights) {
-		glm::vec3 normal_source = glm::normalize(source->position);
-
-		// glm::vec3 reflected = (float)2 * normal * glm::dot(normal, normal_source) - normal_source;
-		// glm::vec3 reflected = glm::reflect(normal_source, normal);
-		// float cos_alpha = glm::dot(reflected, view_direction);
+		glm::vec3 normal_source = glm::normalize(source->position - point);
 		glm::vec3 h = 0.5f * (normal_source + view_direction);
 
 		glm::vec3 diffuse = material.diffuse * glm::dot(normal, normal_source);
-		// glm::vec3 specular = material.specular * pow(cos_alpha, material.shininess);
 		glm::vec3 specular = material.specular * pow(glm::dot(normal, glm::normalize(h)), 4*material.shininess);
 
 		aggregate += (diffuse + specular) * source->color;
@@ -212,9 +207,6 @@ glm::vec3 trace_ray(Ray ray) {
  Function defining the scene
 */
 void sceneDefinition () {
-	// objects.push_back(new Sphere(1.0, glm::vec3(-0, -2, 8), glm::vec3(0.6, 0.9, 0.6)));
-	// objects.push_back(new Sphere(1.0, glm::vec3(1, -2, 8), glm::vec3(0.6, 0.6, 0.9)));
-
 	Material blue;
 	blue.ambient = glm::vec3(0.07f, 0.07f, 0.1f);
 	blue.diffuse = glm::vec3(0.7f, 0.7f, 1.0f);
