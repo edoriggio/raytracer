@@ -16,7 +16,7 @@ using namespace std;
 
 /**
  Class representing a single ray.
- */
+*/
 class Ray {
 public:
 	glm::vec3 origin; ///< Origin of the ray
@@ -26,17 +26,16 @@ public:
 	 Contructor of the ray
 	 @param origin Origin of the ray
 	 @param direction Direction of the ray
-	 */
+	*/
 	Ray(glm::vec3 origin, glm::vec3 direction) : origin(origin), direction(direction) {
 	}
 };
-
 
 class Object;
 
 /**
  Structure representing the event of hitting an object
- */
+*/
 struct Hit {
 	bool hit; ///< Boolean indicating whether there was or there was no intersection with an object
 	glm::vec3 normal; ///< Normal vector of the intersected object at the intersection point
@@ -56,12 +55,13 @@ public:
 	/** A function computing an intersection, which returns the structure Hit */
 	virtual Hit intersect(Ray ray) = 0;
 
-	/** Function that returns the material struct of the object*/
+	/** Function that returns the material struct of the object */
 	Material getMaterial() {
 		return material;
 	}
 
-	/** Function that set the material
+	/**
+	 Function that set the material
 	 @param material A structure desribing the material of the object
 	*/
 	void setMaterial(Material material) {
@@ -71,7 +71,7 @@ public:
 
 /**
  Implementation of the class Object for sphere shape.
- */
+*/
 class Sphere : public Object {
 private:
 	float radius; ///< Radius of the sphere
@@ -83,7 +83,7 @@ public:
 	 @param radius Radius of the sphere
 	 @param center Center of the sphere
 	 @param color Color of the sphere
-	 */
+	*/
 	Sphere(float radius, glm::vec3 center, glm::vec3 color) : radius(radius), center(center) {
 		this->color = color;
 	}
@@ -92,7 +92,7 @@ public:
 		this->material = material;
 	}
 
-	/** Implementation of the intersection function*/
+	/** Implementation of the intersection function */
 	Hit intersect(Ray ray) {
 		Hit hit;
 		hit.hit = false;
@@ -129,11 +129,11 @@ public:
 
 /**
  Light class
- */
+*/
 class Light {
 public:
 	glm::vec3 position; ///< Position of the light source
-	glm::vec3 color; ///< Color/intentisty of the light source
+	glm::vec3 color; ///< Color/intensity of the light source
 
 	Light(glm::vec3 position): position(position) {
 		color = glm::vec3(1.0);
@@ -160,17 +160,19 @@ glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec3 view_direction
 	for (Light * source : lights) {
 		glm::vec3 normal_source = glm::normalize(source->position);
 
-		glm::vec3 reflected = (float)2 * normal * glm::dot(normal, normal_source) - normal_source;
-		float cos_alpha = glm::dot(reflected, view_direction);
+		// glm::vec3 reflected = (float)2 * normal * glm::dot(normal, normal_source) - normal_source;
+		// glm::vec3 reflected = glm::reflect(normal_source, normal);
+		// float cos_alpha = glm::dot(reflected, view_direction);
+		glm::vec3 h = 0.5f * (normal_source + view_direction);
 
 		glm::vec3 diffuse = material.diffuse * glm::dot(normal, normal_source);
-		glm::vec3 specular = material.specular * pow(cos_alpha, material.shininess);
+		// glm::vec3 specular = material.specular * pow(cos_alpha, material.shininess);
+		glm::vec3 specular = material.specular * pow(glm::dot(normal, glm::normalize(h)), 4*material.shininess);
 
 		aggregate += (diffuse + specular) * source->color;
 	}
 
-	glm::vec3 color = ambient + aggregate;
-	color = glm::clamp(color, glm::vec3(0.0), glm::vec3(1.0));
+	glm::vec3 color = glm::clamp(ambient + aggregate, glm::vec3(0.0), glm::vec3(1.0));
 
 	return color;
 }
@@ -179,15 +181,15 @@ glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec3 view_direction
  Functions that computes a color along the ray
  @param ray Ray that should be traced through the scene
  @return Color at the intersection point
- */
+*/
 glm::vec3 trace_ray(Ray ray) {
-	// hit structure representing the closest intersection
+	// Hit structure representing the closest intersection
 	Hit closest_hit;
 	
 	closest_hit.hit = false;
 	closest_hit.distance = INFINITY;
 	
-	//Loop over all objects to find the closest intersection
+	// Loop over all objects to find the closest intersection
 	for (int k = 0; k<objects.size(); k++) {
 		Hit hit = objects[k]->intersect(ray);
 
@@ -205,9 +207,10 @@ glm::vec3 trace_ray(Ray ray) {
 
 	return color;
 }
+
 /**
  Function defining the scene
- */
+*/
 void sceneDefinition () {
 	// objects.push_back(new Sphere(1.0, glm::vec3(-0, -2, 8), glm::vec3(0.6, 0.9, 0.6)));
 	// objects.push_back(new Sphere(1.0, glm::vec3(1, -2, 8), glm::vec3(0.6, 0.6, 0.9)));
@@ -242,7 +245,7 @@ void sceneDefinition () {
 int main(int argc, const char * argv[]) {
 	clock_t t = clock(); // variable for keeping the time of the rendering
 	
-	int width = 1024; //width of the image
+	int width = 1024; // width of the image
 	int height = 768; // height of the image
 	float fov = 90; // field of view
 

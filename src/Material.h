@@ -11,7 +11,7 @@
 /**
  Structure describing a material of an object
 */
-struct Material{
+struct Material {
   glm::vec3 ambient = glm::vec3(0.0); ///< Ambient coefficient
   glm::vec3 diffuse = glm::vec3(1.0); ///< Diffuse coefficient
   glm::vec3 specular = glm::vec3(0.0); ///< Specular coefficient
