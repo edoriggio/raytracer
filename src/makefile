@@ -8,6 +8,11 @@ display-mac:
 display-linux:
 	gimp ./result.ppm &
 
+video:
+	./scripts/animate.sh
+	./scripts/convert.sh
+
 clean:
-	rm ./a.out
-	rm ./result.ppm
+	rm -f ./a.out
+	rm -f ./*.ppm
+	rm -rf ./out
