@@ -1,5 +1,5 @@
 render: main.cpp
-	g++ main.cpp
+	g++ main.cpp -w
 	./a.out
 
 display-mac:

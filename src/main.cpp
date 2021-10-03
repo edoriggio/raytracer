@@ -154,20 +154,23 @@ glm::vec3 ambient_light(1.0, 1.0, 1.0);
  @param material A material structure representing the material of the object
 */
 glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec3 view_direction, Material material) {
-	glm::vec3 aggregate;
-	glm::vec3 ambient = material.ambient * ambient_light;
+	glm::vec3 color = glm::vec3(0.0);
+	color += material.ambient * ambient_light;
 
 	for (Light * source : lights) {
 		glm::vec3 normal_source = glm::normalize(source->position - point);
-		glm::vec3 h = 0.5f * (normal_source + view_direction);
+		glm::vec3 reflected = glm::normalize(2.0f * normal * glm::dot(normal, normal_source) - normal_source);
 
-		glm::vec3 diffuse = material.diffuse * glm::dot(normal, normal_source);
-		glm::vec3 specular = material.specular * pow(glm::dot(normal, glm::normalize(h)), 4*material.shininess);
+		float cos_alpha = glm::dot(reflected, view_direction) >= 0.0f ? glm::dot(reflected, view_direction) : 0.0;
+		float cos_phi = glm::dot(normal, normal_source) >= 0.0f ? glm::dot(normal, normal_source) : 0.0;
 
-		aggregate += (diffuse + specular) * source->color;
+		glm::vec3 diffuse = material.diffuse * cos_phi;
+		glm::vec3 specular = material.specular * pow(cos_alpha, material.shininess);
+
+		color += (diffuse + specular) * source->color;
 	}
 
-	glm::vec3 color = glm::clamp(ambient + aggregate, glm::vec3(0.0), glm::vec3(1.0));
+	color = glm::clamp(color, glm::vec3(0.0), glm::vec3(1.0));
 
 	return color;
 }
@@ -192,13 +195,10 @@ glm::vec3 trace_ray(Ray ray) {
 			closest_hit = hit;
 	}
 	
-	glm::vec3 color;
+	glm::vec3 color(0.0);
 
-	if (closest_hit.hit) {
+	if (closest_hit.hit)
 		color = PhongModel(closest_hit.intersection, closest_hit.normal, glm::normalize(-ray.direction), closest_hit.object->getMaterial());
-	} else {
-		color = glm::vec3(0.0, 0.0, 0.0);
-	}
 
 	return color;
 }
