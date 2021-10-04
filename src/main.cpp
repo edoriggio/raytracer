@@ -214,7 +214,7 @@ void sceneDefinition(float x=0, float y=12) {
 	blue.shininess = 100.0;
 	
 	Material red;
-	red.ambient = glm::vec3(0.01f, 0.03f, 0.03f);
+	red.ambient = glm::vec3(0.1f, 0.03f, 0.03f);
 	red.diffuse = glm::vec3(1.0f, 0.3f, 0.3f);
 	red.specular = glm::vec3(0.5);
 	red.shininess = 10.0;
