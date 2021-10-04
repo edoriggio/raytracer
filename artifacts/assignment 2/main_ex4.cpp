@@ -88,7 +88,7 @@ public:
 		this->color = color;
 	}
 
-	Sphere(float radius, glm::vec3 center, Material material) : radius(radius), center(center){
+	Sphere(float radius, glm::vec3 center, Material material) : radius(radius), center(center) {
 		this->material = material;
 	}
 
@@ -188,7 +188,7 @@ glm::vec3 trace_ray(Ray ray) {
 	closest_hit.distance = INFINITY;
 	
 	// Loop over all objects to find the closest intersection
-	for (int k = 0; k<objects.size(); k++) {
+	for (int k = 0; k < objects.size(); k++) {
 		Hit hit = objects[k]->intersect(ray);
 
 		if (hit.hit == true && hit.distance < closest_hit.distance)
@@ -206,7 +206,7 @@ glm::vec3 trace_ray(Ray ray) {
 /**
  Function defining the scene
 */
-void sceneDefinition () {
+void sceneDefinition(float x=0, float y=12) {
 	Material blue;
 	blue.ambient = glm::vec3(0.07f, 0.07f, 0.1f);
 	blue.diffuse = glm::vec3(0.7f, 0.7f, 1.0f);
@@ -214,7 +214,7 @@ void sceneDefinition () {
 	blue.shininess = 100.0;
 	
 	Material red;
-	red.ambient = glm::vec3(0.01f, 0.03f, 0.03f);
+	red.ambient = glm::vec3(0.1f, 0.03f, 0.03f);
 	red.diffuse = glm::vec3(1.0f, 0.3f, 0.3f);
 	red.specular = glm::vec3(0.5);
 	red.shininess = 10.0;
@@ -230,7 +230,7 @@ void sceneDefinition () {
 	objects.push_back(new Sphere(1.0, glm::vec3(3.0, -2.0, 6.0), green));
 
 	lights.push_back(new Light(glm::vec3(0, 26, 5), glm::vec3(0.4)));
-	lights.push_back(new Light(glm::vec3(0, 1, 12), glm::vec3(0.4)));
+	lights.push_back(new Light(glm::vec3(x, 1, y), glm::vec3(0.4)));
 	lights.push_back(new Light(glm::vec3(0, 5, 1), glm::vec3(0.4)));
 }
 
@@ -243,7 +243,11 @@ int main(int argc, const char * argv[]) {
 
 	float pixel_size = (2 * tan((fov / 2) * (M_PI / 180))) / width; // size of the pixels
 	
-	sceneDefinition();
+	if (argc > 2) {
+		sceneDefinition(atof(argv[2]), atof(argv[3]));
+	} else {
+		sceneDefinition();
+	}
 	
 	Image image(width, height); // Create an image where we will store the result
 
@@ -260,14 +264,18 @@ int main(int argc, const char * argv[]) {
 			Ray ray = Ray(origin, direction);
 			image.setPixel(i, j, trace_ray(ray));
 		}
-    
-	t = clock() - t;
-	cout << "It took " << ((float)t)/CLOCKS_PER_SEC << " seconds to render the image." << endl;
-	cout << "I could render at " << (float)CLOCKS_PER_SEC/((float)t) << " frames per second." << endl;
+  
+	for (int i = 0; i < argc ; i++) {
+		if (!strcmp(argv[i], "--verbose") || !strcmp(argv[i], "-v")) {
+			t = clock() - t;
+			cout << "It took " << ((float)t)/CLOCKS_PER_SEC << " seconds to render the image." << endl;
+			cout << "I could render at " << (float)CLOCKS_PER_SEC/((float)t) << " frames per second." << endl;
+		}
+	}
     
 	// Writing the final results of the rendering
-	if (argc == 2) {
-		image.writeImage(argv[2]);
+	if (argc >= 2) {
+		image.writeImage(argv[1]);
 	} else {
 		image.writeImage("./result.ppm");
 	}
