@@ -5,3 +5,9 @@
 *.synctex.gz
 
 .vscode
+
+a.out
+*.ppm
+out
+
+.DS_Store
