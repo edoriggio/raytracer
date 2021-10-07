@@ -42,11 +42,12 @@ struct Hit {
 	glm::vec3 intersection; ///< Point of Intersection
 	float distance; ///< Distance from the origin of the ray to the intersection point
 	Object *object; ///< A pointer to the intersected object
+	glm::vec2 uv; ///< Coordinates for computing the texture
 };
 
 /**
- General class for the object
- */
+ General class for objects
+*/
 class Object {
 public:
 	glm::vec3 color; ///< Color of the object
@@ -70,7 +71,7 @@ public:
 };
 
 /**
- Implementation of the class Object for sphere shape.
+ Implementation of the class Object for spheres
 */
 class Sphere : public Object {
 private:
@@ -122,7 +123,53 @@ public:
 		hit.intersection = intersection;
 		hit.normal = normal;
 		hit.object = this;
+		/*
+			Excercise 2 - computing texture coordintes for the sphere.
+				
+				hit.uv.s =
+				hit.uv.t =
 
+		*/
+		return hit;
+	}
+};
+
+/**
+ Implementation of the class Object for planes
+*/
+class Plane : public Object {
+private:
+	glm::vec3 normal;
+	glm::vec3 point;
+
+public:
+	/**
+	 The constructor of the plane
+	 @param point Center of the plane
+	 @param normal Normal of the plane
+	*/
+	Plane(glm::vec3 point, glm::vec3 normal) : point(point), normal(normal) {
+	}
+
+	Plane(glm::vec3 point, glm::vec3 normal, Material material) : point(point), normal(normal) {
+		this->material = material;
+	}
+
+	Hit intersect(Ray ray) {
+		Hit hit;
+		hit.hit = false;
+		
+		/*
+		 
+		 
+		 
+		 Excercise 1 - Plane-ray intersection
+		 
+		 
+		 
+		 
+		*/
+		
 		return hit;
 	}
 };
@@ -150,12 +197,21 @@ glm::vec3 ambient_light(1.0, 1.0, 1.0);
 /** Function for computing color of an object according to the Phong Model
  @param point A point belonging to the object for which the color is computed
  @param normal A normal vector at the point
+ @param uv Texture coordinates
  @param view_direction A normalized direction from the point to the viewer/camera
  @param material A material structure representing the material of the object
 */
-glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec3 view_direction, Material material) {
+glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 view_direction, Material material) {
 	glm::vec3 color = glm::vec3(0.0);
 	color += material.ambient * ambient_light;
+
+	/*
+		 
+		 
+		Excercise 2 - Modify the code by adding texturing, i.e., the diffuse color should be computed using one of the texture functions according to the texture coordinates stored in the uv variable. Make sure that the code works also for objects that should not have texture.
+		 
+		 
+	*/
 
 	for (Light * source : lights) {
 		glm::vec3 normal_source = glm::normalize(source->position - point);
@@ -170,13 +226,21 @@ glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec3 view_direction
 		color += (diffuse + specular) * source->color;
 	}
 
+	/*
+		 
+		 
+	Excercise 3 - Modify the code by adding attenuation of the light due to distance from the intersection point to the light source
+		 
+
+	*/
+
 	color = glm::clamp(color, glm::vec3(0.0), glm::vec3(1.0));
 
 	return color;
 }
 
 /**
- Functions that computes a color along the ray
+ Function that computes a color along the ray
  @param ray Ray that should be traced through the scene
  @return Color at the intersection point
 */
@@ -198,7 +262,7 @@ glm::vec3 trace_ray(Ray ray) {
 	glm::vec3 color(0.0);
 
 	if (closest_hit.hit)
-		color = PhongModel(closest_hit.intersection, closest_hit.normal, glm::normalize(-ray.direction), closest_hit.object->getMaterial());
+		color = PhongModel(closest_hit.intersection, closest_hit.normal, closest_hit.uv, glm::normalize(-ray.direction), closest_hit.object->getMaterial());
 
 	return color;
 }
@@ -214,8 +278,8 @@ void sceneDefinition(float x=0, float y=12) {
 	blue.shininess = 100.0;
 	
 	Material red;
-	red.ambient = glm::vec3(0.1f, 0.03f, 0.03f);
 	red.diffuse = glm::vec3(1.0f, 0.3f, 0.3f);
+	red.ambient = glm::vec3(0.01f, 0.03f, 0.03f);
 	red.specular = glm::vec3(0.5);
 	red.shininess = 10.0;
 
@@ -228,6 +292,19 @@ void sceneDefinition(float x=0, float y=12) {
 	objects.push_back(new Sphere(1.0, glm::vec3(1.0, -2.0, 8.0), blue));
 	objects.push_back(new Sphere(0.5, glm::vec3(-1.0, -2.5, 6.0), red));
 	objects.push_back(new Sphere(1.0, glm::vec3(3.0, -2.0, 6.0), green));
+
+	// Excercise 2 - Textured sphere
+	//Material textured;
+	//textured.texture = &checkerboardTexture;
+	//objects.push_back(new Sphere(7.0, glm::vec3(-6,4,23), textured));
+	
+	/*
+		
+		
+	Excercise 1 - Definition of planes and the materials
+		
+
+	*/
 
 	lights.push_back(new Light(glm::vec3(0, 26, 5), glm::vec3(0.4)));
 	lights.push_back(new Light(glm::vec3(x, 1, y), glm::vec3(0.4)));
