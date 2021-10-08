@@ -240,6 +240,25 @@ glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 
 }
 
 /**
+ Function performing tonemapping of the intensities computed using the raytracer
+ @param intensity Input intensity
+ @return Tonemapped intensity in range (0,1)
+*/
+glm::vec3 toneMapping(glm::vec3 intensity) {
+	glm::vec3 tone_mapped = intensity; //tonemapped intensity
+	
+	/*
+	 
+	 
+	 Excercise 3 - Tone mapping
+	 
+	 
+	*/
+	
+	return glm::clamp(tone_mapped, glm::vec3(0.0), glm::vec3(1.0));
+}
+
+/**
  Function that computes a color along the ray
  @param ray Ray that should be traced through the scene
  @return Color at the intersection point
