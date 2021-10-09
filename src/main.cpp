@@ -159,16 +159,27 @@ public:
 		Hit hit;
 		hit.hit = false;
 		
-		/*
-		 
-		 
-		 
-		 Excercise 1 - Plane-ray intersection
-		 
-		 
-		 
-		 
-		*/
+		float num = glm::dot(point - ray.origin, normal);
+		float denom = glm::dot(ray.direction, normal);
+
+		if (denom == 0) {
+			return hit;
+		}
+
+		float t = num / denom;
+
+		if (t < 0) {
+			return hit;
+		}
+
+		glm::vec3 intersection = ray.direction * t + ray.origin;
+		// glm::vec3 normal = glm::normalize();
+
+		hit.hit = true;
+		hit.distance = glm::distance(ray.origin, intersection);
+		hit.intersection = intersection;
+		hit.normal = -normal;
+		hit.object = this;
 		
 		return hit;
 	}
@@ -296,17 +307,35 @@ void sceneDefinition(float x=0, float y=12) {
 	blue.specular = glm::vec3(0.6);
 	blue.shininess = 100.0;
 	
+	Material blue_matte;
+	blue_matte.ambient = glm::vec3(0.07f, 0.07f, 0.1f);
+	blue_matte.diffuse = glm::vec3(0.7f, 0.7f, 1.0f);
+	blue_matte.specular = glm::vec3(0.0);
+	blue_matte.shininess = 0.0;
+
 	Material red;
 	red.diffuse = glm::vec3(1.0f, 0.3f, 0.3f);
 	red.ambient = glm::vec3(0.01f, 0.03f, 0.03f);
 	red.specular = glm::vec3(0.5);
 	red.shininess = 10.0;
 
+	Material red_matte;
+	red_matte.diffuse = glm::vec3(1.0f, 0.3f, 0.3f);
+	red_matte.ambient = glm::vec3(0.01f, 0.03f, 0.03f);
+	red_matte.specular = glm::vec3(0.0);
+	red_matte.shininess = 0.0;
+	
 	Material green;
 	green.ambient = glm::vec3(0.07f, 0.09f, 0.07f);
 	green.diffuse = glm::vec3(0.7f, 0.9f, 0.7f);
 	green.specular = glm::vec3(0.0);
 	green.shininess = 0.0;
+
+	Material white;
+	white.diffuse = glm::vec3(1.0f, 1.0f, 1.0f);
+	white.ambient = glm::vec3(0.01f, 0.02f, 0.02f);
+	white.specular = glm::vec3(0.0);
+	white.shininess = 0.0;
 
 	objects.push_back(new Sphere(1.0, glm::vec3(1.0, -2.0, 8.0), blue));
 	objects.push_back(new Sphere(0.5, glm::vec3(-1.0, -2.5, 6.0), red));
@@ -317,13 +346,17 @@ void sceneDefinition(float x=0, float y=12) {
 	//textured.texture = &checkerboardTexture;
 	//objects.push_back(new Sphere(7.0, glm::vec3(-6,4,23), textured));
 	
-	/*
-		
-		
-	Excercise 1 - Definition of planes and the materials
-		
+	// Front and back planes
+	objects.push_back(new Plane(glm::vec3(0, 0, 30.0), glm::normalize(glm::vec3(0, 0, 30.0)), green));
+	objects.push_back(new Plane(glm::vec3(0, 0, -0.01), glm::normalize(glm::vec3(0, 0, -0.01)), green));
 
-	*/
+	// Right and left planes
+	objects.push_back(new Plane(glm::vec3(15.0, 0, 0), glm::normalize(glm::vec3(15.0, 0, 0)), blue_matte));
+	objects.push_back(new Plane(glm::vec3(-15.0, 0, 0), glm::normalize(glm::vec3(-15.0, 0, 0)), red_matte));
+
+	// Top and bottom planes
+	objects.push_back(new Plane(glm::vec3(0, 27.0, 0), glm::normalize(glm::vec3(0, 27.0, 0)), white));
+	objects.push_back(new Plane(glm::vec3(0, -3.0, 0), glm::normalize(glm::vec3(0, -3.0, 0)), white));
 
 	lights.push_back(new Light(glm::vec3(0, 26, 5), glm::vec3(0.4)));
 	lights.push_back(new Light(glm::vec3(x, 1, y), glm::vec3(0.4)));
