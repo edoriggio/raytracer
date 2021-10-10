@@ -117,19 +117,21 @@ public:
 		intersection = t * ray.direction;
 		
 		glm::vec3 normal = glm::normalize(intersection - c);
+
+		float theta = asin(normal.y / radius);
+		float gamma = atan2(normal.z, normal.x);
+
+		theta = glm::clamp(theta, (float)(-M_PI / 2), (float)(M_PI / 2));
+		gamma = glm::clamp(gamma, (float)-M_PI, (float)M_PI);
 		
 		hit.hit = true;
 		hit.distance = glm::distance(ray.origin, intersection);
 		hit.intersection = intersection;
 		hit.normal = normal;
+		hit.uv.s = (gamma + M_PI) / (2 * M_PI);
+		hit.uv.t = theta + (M_PI / 2);
 		hit.object = this;
-		/*
-			Excercise 2 - computing texture coordintes for the sphere.
-				
-				hit.uv.s =
-				hit.uv.t =
 
-		*/
 		return hit;
 	}
 };
@@ -173,7 +175,6 @@ public:
 		}
 
 		glm::vec3 intersection = ray.direction * t + ray.origin;
-		// glm::vec3 normal = glm::normalize();
 
 		hit.hit = true;
 		hit.distance = glm::distance(ray.origin, intersection);
@@ -216,22 +217,21 @@ glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 
 	glm::vec3 color = glm::vec3(0.0);
 	color += material.ambient * ambient_light;
 
-	/*
-		 
-		 
-		Excercise 2 - Modify the code by adding texturing, i.e., the diffuse color should be computed using one of the texture functions according to the texture coordinates stored in the uv variable. Make sure that the code works also for objects that should not have texture.
-		 
-		 
-	*/
-
 	for (Light * source : lights) {
+		glm::vec3 diffuse;
+
 		glm::vec3 normal_source = glm::normalize(source->position - point);
 		glm::vec3 reflected = glm::normalize(2.0f * normal * glm::dot(normal, normal_source) - normal_source);
 
 		float cos_alpha = glm::dot(reflected, view_direction) >= 0.0f ? glm::dot(reflected, view_direction) : 0.0;
 		float cos_phi = glm::dot(normal, normal_source) >= 0.0f ? glm::dot(normal, normal_source) : 0.0;
 
-		glm::vec3 diffuse = material.diffuse * cos_phi;
+		if (material.texture != NULL) {
+			diffuse = material.texture(uv) * cos_phi;
+		} else {
+			diffuse = material.diffuse * cos_phi;
+		}
+
 		glm::vec3 specular = material.specular * pow(cos_alpha, material.shininess);
 
 		color += (diffuse + specular) * source->color;
@@ -331,21 +331,27 @@ void sceneDefinition(float x=0, float y=12) {
 	green.specular = glm::vec3(0.0);
 	green.shininess = 0.0;
 
+	Material checkerBoard;
+	checkerBoard.texture = &checkerboardTexture;
+
+	Material rainbow;
+	rainbow.texture = &rainbowTexture;
+
 	Material white;
 	white.diffuse = glm::vec3(1.0f, 1.0f, 1.0f);
 	white.ambient = glm::vec3(0.01f, 0.02f, 0.02f);
 	white.specular = glm::vec3(0.0);
 	white.shininess = 0.0;
 
+	// Normal spheres
 	objects.push_back(new Sphere(1.0, glm::vec3(1.0, -2.0, 8.0), blue));
 	objects.push_back(new Sphere(0.5, glm::vec3(-1.0, -2.5, 6.0), red));
 	objects.push_back(new Sphere(1.0, glm::vec3(3.0, -2.0, 6.0), green));
 
-	// Excercise 2 - Textured sphere
-	//Material textured;
-	//textured.texture = &checkerboardTexture;
-	//objects.push_back(new Sphere(7.0, glm::vec3(-6,4,23), textured));
-	
+	// Textured sphere
+	// objects.push_back(new Sphere(7.0, glm::vec3(-6.0, 4.0, 23.0), checkerBoard));
+	objects.push_back(new Sphere(7.0, glm::vec3(-6.0, 4.0, 23.0), rainbow));
+
 	// Front and back planes
 	objects.push_back(new Plane(glm::vec3(0, 0, 30.0), glm::normalize(glm::vec3(0, 0, 30.0)), green));
 	objects.push_back(new Plane(glm::vec3(0, 0, -0.01), glm::normalize(glm::vec3(0, 0, -0.01)), green));
@@ -358,6 +364,7 @@ void sceneDefinition(float x=0, float y=12) {
 	objects.push_back(new Plane(glm::vec3(0, 27.0, 0), glm::normalize(glm::vec3(0, 27.0, 0)), white));
 	objects.push_back(new Plane(glm::vec3(0, -3.0, 0), glm::normalize(glm::vec3(0, -3.0, 0)), white));
 
+	// Light sources
 	lights.push_back(new Light(glm::vec3(0, 26, 5), glm::vec3(0.4)));
 	lights.push_back(new Light(glm::vec3(x, 1, y), glm::vec3(0.4)));
 	lights.push_back(new Light(glm::vec3(0, 5, 1), glm::vec3(0.4)));
