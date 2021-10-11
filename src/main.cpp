@@ -42,11 +42,12 @@ struct Hit {
 	glm::vec3 intersection; ///< Point of Intersection
 	float distance; ///< Distance from the origin of the ray to the intersection point
 	Object *object; ///< A pointer to the intersected object
+	glm::vec2 uv; ///< Coordinates for computing the texture
 };
 
 /**
- General class for the object
- */
+ General class for objects
+*/
 class Object {
 public:
 	glm::vec3 color; ///< Color of the object
@@ -70,7 +71,7 @@ public:
 };
 
 /**
- Implementation of the class Object for sphere shape.
+ Implementation of the class Object for spheres
 */
 class Sphere : public Object {
 private:
@@ -116,13 +117,71 @@ public:
 		intersection = t * ray.direction;
 		
 		glm::vec3 normal = glm::normalize(intersection - c);
+
+		float theta = asin(normal.y / radius);
+		float phi = atan2(normal.z, normal.x);
+
+		// theta = glm::clamp(theta, (float)(-M_PI / 2), (float)(M_PI / 2));
+		// phi = glm::clamp(phi, (float)-M_PI, (float)M_PI);
 		
 		hit.hit = true;
 		hit.distance = glm::distance(ray.origin, intersection);
 		hit.intersection = intersection;
 		hit.normal = normal;
+		hit.uv.s = (phi + M_PI) / (2 * M_PI);
+		hit.uv.t = theta + (M_PI / 2);
 		hit.object = this;
 
+		return hit;
+	}
+};
+
+/**
+ Implementation of the class Object for planes
+*/
+class Plane : public Object {
+private:
+	glm::vec3 normal;
+	glm::vec3 point;
+
+public:
+	/**
+	 The constructor of the plane
+	 @param point Center of the plane
+	 @param normal Normal of the plane
+	*/
+	Plane(glm::vec3 point, glm::vec3 normal) : point(point), normal(normal) {
+	}
+
+	Plane(glm::vec3 point, glm::vec3 normal, Material material) : point(point), normal(normal) {
+		this->material = material;
+	}
+
+	Hit intersect(Ray ray) {
+		Hit hit;
+		hit.hit = false;
+		
+		float num = glm::dot(point - ray.origin, normal);
+		float denom = glm::dot(ray.direction, normal);
+
+		if (denom == 0) {
+			return hit;
+		}
+
+		float t = num / denom;
+
+		if (t < 0) {
+			return hit;
+		}
+
+		glm::vec3 intersection = ray.direction * t + ray.origin;
+
+		hit.hit = true;
+		hit.distance = glm::distance(ray.origin, intersection);
+		hit.intersection = intersection;
+		hit.normal = -normal;
+		hit.object = this;
+		
 		return hit;
 	}
 };
@@ -147,36 +206,66 @@ vector<Light *> lights; ///< A list of lights in the scene
 vector<Object *> objects; ///< A list of all objects in the scene
 glm::vec3 ambient_light(1.0, 1.0, 1.0);
 
+/**
+ Function performing tone mapping of the intensities computed using the raytracer
+ @param intensity Input intensity
+ @return Tone mapped intensity in range (0,1)
+*/
+glm::vec3 toneMapping(glm::vec3 intensity) {
+	glm::vec3 alpha(8.0);
+	glm::vec3 beta(2.0);
+	glm::vec3 gamma(2.3);
+
+	glm::vec3 tone_mapped = glm::pow(alpha * glm::pow(intensity, beta), glm::vec3(1.0) / gamma);
+	
+	return glm::clamp(tone_mapped, glm::vec3(0.0), glm::vec3(1.0));
+}
+
 /** Function for computing color of an object according to the Phong Model
  @param point A point belonging to the object for which the color is computed
  @param normal A normal vector at the point
+ @param uv Texture coordinates
  @param view_direction A normalized direction from the point to the viewer/camera
  @param material A material structure representing the material of the object
 */
-glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec3 view_direction, Material material) {
+glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 view_direction, Material material) {
 	glm::vec3 color = glm::vec3(0.0);
 	color += material.ambient * ambient_light;
 
 	for (Light * source : lights) {
+		glm::vec3 diffuse;
+
+		float att_a = 0.02;
+		float att_b = 0.02;
+		float att_c = 0.02;
+
 		glm::vec3 normal_source = glm::normalize(source->position - point);
 		glm::vec3 reflected = glm::normalize(2.0f * normal * glm::dot(normal, normal_source) - normal_source);
 
 		float cos_alpha = glm::dot(reflected, view_direction) >= 0.0f ? glm::dot(reflected, view_direction) : 0.0;
 		float cos_phi = glm::dot(normal, normal_source) >= 0.0f ? glm::dot(normal, normal_source) : 0.0;
+		float distance = glm::distance(source->position, point);
 
-		glm::vec3 diffuse = material.diffuse * cos_phi;
+		if (material.texture != NULL) {
+			diffuse = material.texture(uv) * cos_phi;
+		} else {
+			diffuse = material.diffuse * cos_phi;
+		}
+
 		glm::vec3 specular = material.specular * pow(cos_alpha, material.shininess);
+		float attenuation = 1 / (att_a + (att_b * distance) + (att_c * pow(distance, 2)));
+		// float attenuation = 1 / pow(distance, 2);
 
-		color += (diffuse + specular) * source->color;
+		color += (diffuse + specular) * source->color * attenuation;
 	}
 
-	color = glm::clamp(color, glm::vec3(0.0), glm::vec3(1.0));
+	color = toneMapping(color);
 
 	return color;
 }
 
 /**
- Functions that computes a color along the ray
+ Function that computes a color along the ray
  @param ray Ray that should be traced through the scene
  @return Color at the intersection point
 */
@@ -198,7 +287,7 @@ glm::vec3 trace_ray(Ray ray) {
 	glm::vec3 color(0.0);
 
 	if (closest_hit.hit)
-		color = PhongModel(closest_hit.intersection, closest_hit.normal, glm::normalize(-ray.direction), closest_hit.object->getMaterial());
+		color = PhongModel(closest_hit.intersection, closest_hit.normal, closest_hit.uv, glm::normalize(-ray.direction), closest_hit.object->getMaterial());
 
 	return color;
 }
@@ -208,30 +297,78 @@ glm::vec3 trace_ray(Ray ray) {
 */
 void sceneDefinition(float x=0, float y=12) {
 	Material blue;
-	blue.ambient = glm::vec3(0.07f, 0.07f, 0.1f);
+	blue.ambient = glm::vec3(0.02f, 0.02f, 0.02f);
 	blue.diffuse = glm::vec3(0.7f, 0.7f, 1.0f);
 	blue.specular = glm::vec3(0.6);
 	blue.shininess = 100.0;
 	
+	Material blue_matte;
+	blue_matte.ambient = glm::vec3(0.02f, 0.02f, 0.02f);
+	blue_matte.diffuse = glm::vec3(0.7f, 0.7f, 1.0f);
+	blue_matte.specular = glm::vec3(0.0);
+	blue_matte.shininess = 0.0;
+
 	Material red;
-	red.ambient = glm::vec3(0.1f, 0.03f, 0.03f);
+	red.ambient = glm::vec3(0.02f, 0.02f, 0.02f);
 	red.diffuse = glm::vec3(1.0f, 0.3f, 0.3f);
 	red.specular = glm::vec3(0.5);
 	red.shininess = 10.0;
 
+	Material red_matte;
+	red_matte.ambient = glm::vec3(0.02f, 0.02f, 0.02f);
+	red_matte.diffuse = glm::vec3(1.0f, 0.3f, 0.3f);
+	red_matte.specular = glm::vec3(0.0);
+	red_matte.shininess = 0.0;
+	
 	Material green;
-	green.ambient = glm::vec3(0.07f, 0.09f, 0.07f);
+	green.ambient = glm::vec3(0.02f, 0.02f, 0.02f);
 	green.diffuse = glm::vec3(0.7f, 0.9f, 0.7f);
 	green.specular = glm::vec3(0.0);
 	green.shininess = 0.0;
 
+	Material green_matte;
+	green_matte.ambient = glm::vec3(0.02f, 0.02f, 0.02f);
+	green_matte.diffuse = glm::vec3(1.0f, 0.3f, 0.3f);
+	green_matte.specular = glm::vec3(0.0);
+	green_matte.shininess = 0.0;
+
+	Material white;
+	white.ambient = glm::vec3(0.02f, 0.02f, 0.02f);
+	white.diffuse = glm::vec3(1.0f, 1.0f, 1.0f);
+	white.specular = glm::vec3(0.0);
+	white.shininess = 0.0;
+
+	Material checkerBoard;
+	checkerBoard.texture = &checkerboardTexture;
+
+	Material rainbow;
+	rainbow.texture = &rainbowTexture;
+
+	// Normal spheres
 	objects.push_back(new Sphere(1.0, glm::vec3(1.0, -2.0, 8.0), blue));
 	objects.push_back(new Sphere(0.5, glm::vec3(-1.0, -2.5, 6.0), red));
 	objects.push_back(new Sphere(1.0, glm::vec3(3.0, -2.0, 6.0), green));
 
-	lights.push_back(new Light(glm::vec3(0, 26, 5), glm::vec3(0.4)));
-	lights.push_back(new Light(glm::vec3(x, 1, y), glm::vec3(0.4)));
-	lights.push_back(new Light(glm::vec3(0, 5, 1), glm::vec3(0.4)));
+	// Textured sphere
+	// objects.push_back(new Sphere(7.0, glm::vec3(-6.0, 4.0, 23.0), checkerBoard));
+	objects.push_back(new Sphere(7.0, glm::vec3(-6.0, 4.0, 23.0), rainbow));
+
+	// Front and back planes
+	objects.push_back(new Plane(glm::vec3(0, 0, 30.0), glm::normalize(glm::vec3(0, 0, 30.0)), green));
+	objects.push_back(new Plane(glm::vec3(0, 0, -0.01), glm::normalize(glm::vec3(0, 0, -0.01)), green));
+
+	// Right and left planes
+	objects.push_back(new Plane(glm::vec3(15.0, 0, 0), glm::normalize(glm::vec3(15.0, 0, 0)), blue_matte));
+	objects.push_back(new Plane(glm::vec3(-15.0, 0, 0), glm::normalize(glm::vec3(-15.0, 0, 0)), red_matte));
+
+	// Top and bottom planes
+	objects.push_back(new Plane(glm::vec3(0, 27.0, 0), glm::normalize(glm::vec3(0, 27.0, 0)), white));
+	objects.push_back(new Plane(glm::vec3(0, -3.0, 0), glm::normalize(glm::vec3(0, -3.0, 0)), white));
+
+	// Light sources
+	lights.push_back(new Light(glm::vec3(0, 26, 5), glm::vec3(0.2)));
+	lights.push_back(new Light(glm::vec3(x, 1, y), glm::vec3(0.2)));
+	lights.push_back(new Light(glm::vec3(0, 5, 1), glm::vec3(0.2)));
 }
 
 int main(int argc, const char * argv[]) {
