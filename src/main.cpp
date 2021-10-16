@@ -212,9 +212,9 @@ glm::vec3 ambient_light(1.0, 1.0, 1.0);
  @return Tone mapped intensity in range (0,1)
 */
 glm::vec3 toneMapping(glm::vec3 intensity) {
-	glm::vec3 alpha(10.0);
-	glm::vec3 beta(2.5);
-	glm::vec3 gamma(2.8);
+	glm::vec3 alpha(8.0);
+	glm::vec3 beta(2.0);
+	glm::vec3 gamma(2.3);
 
 	glm::vec3 tone_mapped = glm::pow(alpha * glm::pow(intensity, beta), glm::vec3(1.0) / gamma);
 	
@@ -235,9 +235,9 @@ glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 
 	for (Light * source : lights) {
 		glm::vec3 diffuse;
 
-		float att_a = 1.0;
-		float att_b = 0.001;
-		float att_c = 0.001;
+		float att_a = 0.02;
+		float att_b = 0.02;
+		float att_c = 0.02;
 
 		glm::vec3 normal_source = glm::normalize(source->position - point);
 		glm::vec3 reflected = glm::normalize(2.0f * normal * glm::dot(normal, normal_source) - normal_source);
