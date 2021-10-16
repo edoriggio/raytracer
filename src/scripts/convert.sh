@@ -31,7 +31,7 @@ done
 
 echo
 
-../bin/ffmpeg -r 60 -s 1024x768 -i frame_%d.png -vcodec libx264 -crf 15 ../../artifacts/assignment\ 2/result.mp4 -hide_banner -loglevel error
+../bin/ffmpeg -r 60 -s 1024x768 -i frame_%d.png -vcodec libx264 -crf 15 ../../artifacts/result.mp4 -hide_banner -loglevel error
 rm ./*.png
 
 cd ../
