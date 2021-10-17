@@ -3,6 +3,9 @@
 *.fls
 *.log
 *.synctex.gz
+*.bbl
+*.blg
+
 
 .vscode
 
