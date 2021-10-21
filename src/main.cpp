@@ -8,6 +8,7 @@
 #include <ctime>
 #include <vector>
 #include "glm/glm.hpp"
+#include "glm/gtx/transform.hpp"
 
 #include "Image.h"
 #include "Material.h"
@@ -49,9 +50,14 @@ struct Hit {
  General class for objects
 */
 class Object {
+protected:
+	glm::mat4 transformationMatrix; ///< Matrix representing the transformation from the local to the global coordinate system
+	glm::mat4 inverseTransformationMatrix; ///< Matrix representing the transformation from the global to the local coordinate system
+	glm::mat4 normalMatrix; ///< Matrix for transforming normal vectors from the local to the global coordinate system
+	
 public:
 	glm::vec3 color; ///< Color of the object
-	Material material;
+	Material material; ///< Structure describing the material of the object
 
 	/** A function computing an intersection, which returns the structure Hit */
 	virtual Hit intersect(Ray ray) = 0;
@@ -67,6 +73,22 @@ public:
 	*/
 	void setMaterial(Material material) {
 		this->material = material;
+	}
+
+	/** Functions for setting up all the transformation matrices
+	 @param matrix The matrix representing the transformation of the object in the global coordinates */
+	void setTransformation(glm::mat4 matrix){
+		
+		transformationMatrix = matrix;
+		
+		
+		/* ----- Assignment 5 ---------
+		 Set the two remaining matrices
+		
+		inverseTransformationMatrix =
+		normalMatrix =
+		 
+		 */
 	}
 };
 
@@ -181,6 +203,47 @@ public:
 		hit.intersection = intersection;
 		hit.normal = -normal;
 		hit.object = this;
+		
+		return hit;
+	}
+};
+
+/**
+ Implementation of the class Object for cones
+*/
+class Cone : public Object {
+public:
+	/**
+	 The constructor of the plane
+	 @param material Material of the cone
+	*/
+	Cone (Material material) {
+		this->material = material;
+	}
+
+	Hit intersect(Ray ray) {
+		Hit hit;
+		hit.hit = false;
+	
+		/*  ---- Assignemnt 5 -----
+		
+		 Implement the ray-cone intersection. Before intersecting the ray with the cone,
+		 make sure that you transform the ray into the local coordinate system.
+		 Remember about normalizing all the directions after transformations.
+		 
+		*/
+	
+		/* If the intersection is found, you have to set all the critical fields in the Hit strucutre
+		 Remember that the final information about intersection point, normal vector and distance have to be given
+		 in the global coordinate system.
+		 
+		hit.hit = true;
+		hit.object = this;
+		hit.intersection =
+		hit.normal =
+		hit.distance =
+		
+		 */
 		
 		return hit;
 	}
@@ -347,7 +410,7 @@ void sceneDefinition(float x=0, float y=12) {
 	// Normal spheres
 	objects.push_back(new Sphere(1.0, glm::vec3(1.0, -2.0, 8.0), blue));
 	objects.push_back(new Sphere(0.5, glm::vec3(-1.0, -2.5, 6.0), red));
-	objects.push_back(new Sphere(1.0, glm::vec3(3.0, -2.0, 6.0), green));
+	// objects.push_back(new Sphere(1.0, glm::vec3(3.0, -2.0, 6.0), green));
 
 	// Textured sphere
 	// objects.push_back(new Sphere(7.0, glm::vec3(-6.0, 4.0, 23.0), checkerBoard));
@@ -364,6 +427,21 @@ void sceneDefinition(float x=0, float y=12) {
 	// Top and bottom planes
 	objects.push_back(new Plane(glm::vec3(0, 27.0, 0), glm::normalize(glm::vec3(0, 27.0, 0)), white));
 	objects.push_back(new Plane(glm::vec3(0, -3.0, 0), glm::normalize(glm::vec3(0, -3.0, 0)), white));
+
+	/* ----- Assignment 5 -------
+	Create two cones and add them to the collection of our objects.
+	Remember to create them with corresponding materials and transformation matrices
+	
+	
+	Cone *cone1 = new Cone(...);
+	cone1->setTransformation(...);
+	objects.push_back(cone1);
+	
+	Cone *cone2 = new Cone(...);
+	cone2->setTransformation(...);
+	objects.push_back(cone2);
+	
+	*/
 
 	// Light sources
 	lights.push_back(new Light(glm::vec3(0, 26, 5), glm::vec3(0.2)));
