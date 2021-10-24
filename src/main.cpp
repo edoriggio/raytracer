@@ -75,20 +75,14 @@ public:
 		this->material = material;
 	}
 
-	/** Functions for setting up all the transformation matrices
-	 @param matrix The matrix representing the transformation of the object in the global coordinates */
-	void setTransformation(glm::mat4 matrix){
-		
+	/**
+	 Functions for setting up all the transformation matrices
+	 @param matrix The matrix representing the transformation of the object in the global coordinates
+	*/
+	void setTransformation(glm::mat4 matrix) {
 		transformationMatrix = matrix;
-		
-		
-		/* ----- Assignment 5 ---------
-		 Set the two remaining matrices
-		
-		inverseTransformationMatrix =
-		normalMatrix =
-		 
-		 */
+		inverseTransformationMatrix = glm::inverse(matrix);
+		normalMatrix = glm::transpose(inverseTransformationMatrix);
 	}
 };
 
@@ -120,31 +114,24 @@ public:
 		Hit hit;
 		hit.hit = false;
 
-		glm::vec3 intersection;
-
 		glm::vec3 d = ray.direction;
 		glm::vec3 c = center;
 
 		float D = sqrt(pow(glm::length(c), 2) - pow(glm::dot(c, d), 2));
 
-		if (D > radius) {
-			return hit;
-		}
+		if (D > radius) return hit;
 
 		float t;
 		float t1 = glm::dot(c, d) + sqrt(pow(radius, 2) - pow(D, 2));
 		float t2 = glm::dot(c, d) - sqrt(pow(radius, 2) - pow(D, 2));
 
 		t = t1 < t2 ? t1 : t2;
-		intersection = t * ray.direction;
+		glm::vec3 intersection = t * ray.direction;
 		
 		glm::vec3 normal = glm::normalize(intersection - c);
 
 		float theta = asin(normal.y / radius);
 		float phi = atan2(normal.z, normal.x);
-
-		// theta = glm::clamp(theta, (float)(-M_PI / 2), (float)(M_PI / 2));
-		// phi = glm::clamp(phi, (float)-M_PI, (float)M_PI);
 		
 		hit.hit = true;
 		hit.distance = glm::distance(ray.origin, intersection);
@@ -186,15 +173,11 @@ public:
 		float num = glm::dot(point - ray.origin, normal);
 		float denom = glm::dot(ray.direction, normal);
 
-		if (denom == 0) {
-			return hit;
-		}
+		if (denom == 0) return hit;
 
 		float t = num / denom;
 
-		if (t < 0) {
-			return hit;
-		}
+		if (t < 0) return hit;
 
 		glm::vec3 intersection = ray.direction * t + ray.origin;
 
@@ -214,7 +197,7 @@ public:
 class Cone : public Object {
 public:
 	/**
-	 The constructor of the plane
+	 The constructor of the cone
 	 @param material Material of the cone
 	*/
 	Cone (Material material) {
@@ -224,26 +207,58 @@ public:
 	Hit intersect(Ray ray) {
 		Hit hit;
 		hit.hit = false;
-	
-		/*  ---- Assignemnt 5 -----
+
+		glm::vec3 origin_prime = inverseTransformationMatrix * glm::vec4(ray.origin, 1.0);
+		glm::vec3 direction_prime = inverseTransformationMatrix * glm::vec4(ray.direction, 0.0);
+
+		float radius = 1.0;
+		float height = 1.0;
+		// glm::vec3 center = glm::vec3(0.0, -1.0, 5.0);
+
+		// float theta2 = pow(radius, 2) / pow(height, 2);
+
+		// float a = pow(direction_prime.x, 2) + pow(direction_prime.z, 2) -  pow(direction_prime.y, 2);
+		// float b = 2 * direction_prime.x * (origin_prime.x - center.x) + 2 * direction_prime.z * (origin_prime.z - center.z) + 2 * direction_prime.y * (height + center.y - origin_prime.y);	
+		// float c = pow(origin_prime.x - center.x, 2) + pow(origin_prime.z - center.z, 2) - pow((center.y - origin_prime.y) - height, 2);
+
+		float a = pow(direction_prime.x, 2) + pow(direction_prime.z, 2) -  pow(direction_prime.y, 2);
+		float b = 2 * direction_prime.x * (origin_prime.x) + 2 * direction_prime.z * (origin_prime.z) + 2 * direction_prime.y * (height - origin_prime.y);	
+		float c = pow(origin_prime.x, 2) + pow(origin_prime.z, 2) - pow(origin_prime.y - height, 2);
 		
-		 Implement the ray-cone intersection. Before intersecting the ray with the cone,
-		 make sure that you transform the ray into the local coordinate system.
-		 Remember about normalizing all the directions after transformations.
-		 
-		*/
-	
-		/* If the intersection is found, you have to set all the critical fields in the Hit strucutre
-		 Remember that the final information about intersection point, normal vector and distance have to be given
-		 in the global coordinate system.
-		 
+		float delta = sqrt(pow(b, 2) - (4 * a * c));
+
+		if (delta < 0) return hit;
+
+		float t;
+		float t1 = (-b + delta) / (2 * a);
+		float t2 = (-b - delta) / (2 * a);
+
+		t = t1 < t2 ? t1 : t2;
+		glm::vec3 intersection = origin_prime + t * direction_prime;
+
+		if (intersection.y < height || intersection.y > 2 * height) return hit;
+
+		// float r = sqrt(pow(intersection.x - center.x, 2) + pow(intersection.z - center.z, 2));
+		float r = sqrt(pow(intersection.x, 2) + pow(intersection.z, 2));
+
+		// glm::vec3 normal = glm::normalize(glm::vec3(intersection.x - center.x, r * (radius / height), intersection.z - center.z));
+		glm::vec3 normal = glm::normalize(glm::vec3(intersection.x, r * (radius / height), intersection.z));
+
+		// cout << intersection.x << " " << intersection.y << " " << intersection.z << endl;
+
+		intersection = transformationMatrix * glm::vec4(intersection, 1.0);
+		normal = normalMatrix * glm::vec4(normal, 0.0);
+
+		// glm::vec3 test = transformationMatrix * glm::vec4(intersection, 1.0);
+
+		// cout << test.x << " " << test.y << " " << test.z << endl;
+		// cout << intersection.x << " " << intersection.y << " " << intersection.z << endl;
+
 		hit.hit = true;
+		hit.distance = glm::distance(ray.origin, intersection);
+		hit.intersection = intersection;
+		hit.normal = glm::normalize(normal);
 		hit.object = this;
-		hit.intersection =
-		hit.normal =
-		hit.distance =
-		
-		 */
 		
 		return hit;
 	}
@@ -317,7 +332,6 @@ glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 
 
 		glm::vec3 specular = material.specular * pow(cos_alpha, material.shininess);
 		float attenuation = 1 / (att_a + (att_b * distance) + (att_c * pow(distance, 2)));
-		// float attenuation = 1 / pow(distance, 2);
 
 		color += (diffuse + specular) * source->color * attenuation;
 	}
@@ -359,6 +373,7 @@ glm::vec3 trace_ray(Ray ray) {
  Function defining the scene
 */
 void sceneDefinition(float x=0, float y=12) {
+	// Materials
 	Material blue;
 	blue.ambient = glm::vec3(0.02f, 0.02f, 0.02f);
 	blue.diffuse = glm::vec3(0.7f, 0.7f, 1.0f);
@@ -412,7 +427,7 @@ void sceneDefinition(float x=0, float y=12) {
 	objects.push_back(new Sphere(0.5, glm::vec3(-1.0, -2.5, 6.0), red));
 	// objects.push_back(new Sphere(1.0, glm::vec3(3.0, -2.0, 6.0), green));
 
-	// Textured sphere
+	// Textured spheres
 	// objects.push_back(new Sphere(7.0, glm::vec3(-6.0, 4.0, 23.0), checkerBoard));
 	objects.push_back(new Sphere(7.0, glm::vec3(-6.0, 4.0, 23.0), rainbow));
 
@@ -432,7 +447,6 @@ void sceneDefinition(float x=0, float y=12) {
 	Create two cones and add them to the collection of our objects.
 	Remember to create them with corresponding materials and transformation matrices
 	
-	
 	Cone *cone1 = new Cone(...);
 	cone1->setTransformation(...);
 	objects.push_back(cone1);
@@ -442,6 +456,20 @@ void sceneDefinition(float x=0, float y=12) {
 	objects.push_back(cone2);
 	
 	*/
+
+	float alpha = 20.0;
+
+	// glm::mat4 T1 = glm::translate(glm::mat4(1.0), glm::vec3(5.0, 9.0, 14.0));
+	glm::mat4 T1 = glm::translate(glm::mat4(1.0), glm::vec3(0.0, 0.0, 8.0));
+
+	glm::mat4 S1 = glm::scale(glm::mat4(1.0), glm::vec3(3.0, 5.0, 1.0));
+	glm::mat4 R1 = glm::rotate(glm::mat4(1.0), 100.0f, glm::vec3(0.0, 0.0, 1.0));
+
+	glm::mat4 M1 = S1 * T1 * R1;
+	
+	Cone * cone1 = new Cone(blue);
+	cone1->setTransformation(M1);
+	objects.push_back(cone1);
 
 	// Light sources
 	lights.push_back(new Light(glm::vec3(0, 26, 5), glm::vec3(0.2)));
