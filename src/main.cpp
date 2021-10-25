@@ -209,50 +209,33 @@ public:
 		hit.hit = false;
 
 		glm::vec3 origin_prime = inverseTransformationMatrix * glm::vec4(ray.origin, 1.0);
-		glm::vec3 direction_prime = inverseTransformationMatrix * glm::vec4(ray.direction, 0.0);
+		glm::vec3 direction_prime = glm::normalize(inverseTransformationMatrix * glm::vec4(ray.direction, 0.0));
 
-		float radius = 1.0;
-		float height = 1.0;
-		// glm::vec3 center = glm::vec3(0.0, -1.0, 5.0);
+		float theta = (float)M_PI/4.0f;
+		glm::vec3 center = glm::vec3(0.0, 1.0, 0.0);
 
-		// float theta2 = pow(radius, 2) / pow(height, 2);
+		float a = pow(glm::dot(direction_prime, center), 2) - pow(cos(theta), 2);
+		float b = 2.0 * ((glm::dot(direction_prime, center) * glm::dot(origin_prime, center)) - glm::dot(direction_prime, origin_prime) * pow(cos(theta), 2));
+		float c = pow(glm::dot(origin_prime, center), 2) - glm::dot(origin_prime, origin_prime) * pow(cos(theta), 2);
 
-		// float a = pow(direction_prime.x, 2) + pow(direction_prime.z, 2) -  pow(direction_prime.y, 2);
-		// float b = 2 * direction_prime.x * (origin_prime.x - center.x) + 2 * direction_prime.z * (origin_prime.z - center.z) + 2 * direction_prime.y * (height + center.y - origin_prime.y);	
-		// float c = pow(origin_prime.x - center.x, 2) + pow(origin_prime.z - center.z, 2) - pow((center.y - origin_prime.y) - height, 2);
-
-		float a = pow(direction_prime.x, 2) + pow(direction_prime.z, 2) -  pow(direction_prime.y, 2);
-		float b = 2 * direction_prime.x * (origin_prime.x) + 2 * direction_prime.z * (origin_prime.z) + 2 * direction_prime.y * (height - origin_prime.y);	
-		float c = pow(origin_prime.x, 2) + pow(origin_prime.z, 2) - pow(origin_prime.y - height, 2);
-		
-		float delta = sqrt(pow(b, 2) - (4 * a * c));
+		float delta = pow(b, 2) - (4.0 * a * c);
 
 		if (delta < 0) return hit;
 
 		float t;
-		float t1 = (-b + delta) / (2 * a);
-		float t2 = (-b - delta) / (2 * a);
+		float t1 = (-b + sqrt(delta)) / (2 * a);
+		float t2 = (-b - sqrt(delta)) / (2 * a);
 
 		t = t1 < t2 ? t1 : t2;
 		glm::vec3 intersection = origin_prime + t * direction_prime;
+		float h = glm::dot(intersection, center);
 
-		if (intersection.y < height || intersection.y > 2 * height) return hit;
+		if (glm::dot(intersection, center) > 0 || intersection.y < -1.0) return hit;
 
-		// float r = sqrt(pow(intersection.x - center.x, 2) + pow(intersection.z - center.z, 2));
-		float r = sqrt(pow(intersection.x, 2) + pow(intersection.z, 2));
-
-		// glm::vec3 normal = glm::normalize(glm::vec3(intersection.x - center.x, r * (radius / height), intersection.z - center.z));
-		glm::vec3 normal = glm::normalize(glm::vec3(intersection.x, r * (radius / height), intersection.z));
-
-		// cout << intersection.x << " " << intersection.y << " " << intersection.z << endl;
+		glm::vec3 normal = glm::normalize(glm::vec3(intersection.x, -intersection.y, intersection.z));
 
 		intersection = transformationMatrix * glm::vec4(intersection, 1.0);
 		normal = normalMatrix * glm::vec4(normal, 0.0);
-
-		// glm::vec3 test = transformationMatrix * glm::vec4(intersection, 1.0);
-
-		// cout << test.x << " " << test.y << " " << test.z << endl;
-		// cout << intersection.x << " " << intersection.y << " " << intersection.z << endl;
 
 		hit.hit = true;
 		hit.distance = glm::distance(ray.origin, intersection);
@@ -416,11 +399,22 @@ void sceneDefinition(float x=0, float y=12) {
 	white.specular = glm::vec3(0.0);
 	white.shininess = 0.0;
 
+	// Textures
 	Material checkerBoard;
 	checkerBoard.texture = &checkerboardTexture;
 
 	Material rainbow;
 	rainbow.texture = &rainbowTexture;
+
+	// Transformation Matrices
+	glm::mat4 T1 = glm::translate(glm::vec3(5.0, 9.0, 14.0));
+	glm::mat4 S1 = glm::scale(glm::vec3(3, 12, 1));
+	glm::mat4 M1 = T1 * S1;
+
+	glm::mat4 T2 = glm::translate(glm::vec3(6.0, -3.0, 7.0));
+	glm::mat4 S2 = glm::scale(glm::vec3(1, 3, 1));
+	glm::mat4 R2 = glm::rotate(-0.6f * (float)M_PI, glm::vec3(0.0, 0.0, 1.0));
+	glm::mat4 M2 = T2 * R2 * S2;
 
 	// Normal spheres
 	objects.push_back(new Sphere(1.0, glm::vec3(1.0, -2.0, 8.0), blue));
@@ -442,34 +436,14 @@ void sceneDefinition(float x=0, float y=12) {
 	// Top and bottom planes
 	objects.push_back(new Plane(glm::vec3(0, 27.0, 0), glm::normalize(glm::vec3(0, 27.0, 0)), white));
 	objects.push_back(new Plane(glm::vec3(0, -3.0, 0), glm::normalize(glm::vec3(0, -3.0, 0)), white));
-
-	/* ----- Assignment 5 -------
-	Create two cones and add them to the collection of our objects.
-	Remember to create them with corresponding materials and transformation matrices
-	
-	Cone *cone1 = new Cone(...);
-	cone1->setTransformation(...);
-	objects.push_back(cone1);
-	
-	Cone *cone2 = new Cone(...);
-	cone2->setTransformation(...);
-	objects.push_back(cone2);
-	
-	*/
-
-	float alpha = 20.0;
-
-	// glm::mat4 T1 = glm::translate(glm::mat4(1.0), glm::vec3(5.0, 9.0, 14.0));
-	glm::mat4 T1 = glm::translate(glm::mat4(1.0), glm::vec3(0.0, 0.0, 8.0));
-
-	glm::mat4 S1 = glm::scale(glm::mat4(1.0), glm::vec3(3.0, 5.0, 1.0));
-	glm::mat4 R1 = glm::rotate(glm::mat4(1.0), 100.0f, glm::vec3(0.0, 0.0, 1.0));
-
-	glm::mat4 M1 = S1 * T1 * R1;
 	
 	Cone * cone1 = new Cone(blue);
 	cone1->setTransformation(M1);
 	objects.push_back(cone1);
+
+	Cone * cone2 = new Cone(green);
+	cone2->setTransformation(M2);
+	objects.push_back(cone2);
 
 	// Light sources
 	lights.push_back(new Light(glm::vec3(0, 26, 5), glm::vec3(0.2)));
