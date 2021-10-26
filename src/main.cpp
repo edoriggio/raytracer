@@ -179,7 +179,7 @@ public:
 
 		if (t < 0) return hit;
 
-		glm::vec3 intersection = ray.direction * t + ray.origin;
+		glm::vec3 intersection = ray.origin + ray.direction * t;
 
 		hit.hit = true;
 		hit.distance = glm::distance(ray.origin, intersection);
@@ -208,15 +208,17 @@ public:
 		Hit hit;
 		hit.hit = false;
 
-		glm::vec3 origin_prime = inverseTransformationMatrix * glm::vec4(ray.origin, 1.0);
-		glm::vec3 direction_prime = glm::normalize(inverseTransformationMatrix * glm::vec4(ray.direction, 0.0));
+		Ray local_coord_ray = Ray(glm::vec3(0), glm::vec3(0));
+		local_coord_ray.origin = inverseTransformationMatrix * glm::vec4(ray.origin, 1.0);
+		local_coord_ray.direction = glm::normalize(inverseTransformationMatrix * glm::vec4(ray.direction, 0.0));
 
 		float theta = (float)M_PI/4.0f;
-		glm::vec3 center = glm::vec3(0.0, 1.0, 0.0);
+		glm::vec3 center = glm::vec3(0.0, -1.0, 0.0);
+		float alpha = glm::dot(glm::normalize(local_coord_ray.origin), center);
 
-		float a = pow(glm::dot(direction_prime, center), 2) - pow(cos(theta), 2);
-		float b = 2.0 * ((glm::dot(direction_prime, center) * glm::dot(origin_prime, center)) - glm::dot(direction_prime, origin_prime) * pow(cos(theta), 2));
-		float c = pow(glm::dot(origin_prime, center), 2) - glm::dot(origin_prime, origin_prime) * pow(cos(theta), 2);
+		float a = pow(glm::dot(local_coord_ray.direction, center), 2) - pow(cos(theta), 2);
+		float b = 2.0 * ((glm::dot(local_coord_ray.direction, center) * glm::dot(local_coord_ray.origin, center)) - glm::dot(local_coord_ray.direction, local_coord_ray.origin) * pow(cos(theta), 2));
+		float c = pow(glm::dot(local_coord_ray.origin, center), 2) - glm::dot(local_coord_ray.origin, local_coord_ray.origin) * pow(cos(theta), 2);
 
 		float delta = pow(b, 2) - (4.0 * a * c);
 
@@ -227,12 +229,22 @@ public:
 		float t2 = (-b - sqrt(delta)) / (2 * a);
 
 		t = t1 < t2 ? t1 : t2;
-		glm::vec3 intersection = origin_prime + t * direction_prime;
+		glm::vec3 intersection = local_coord_ray.origin + t * local_coord_ray.direction;
 		float h = glm::dot(intersection, center);
 
-		if (glm::dot(intersection, center) > 0 || intersection.y < -1.0) return hit;
+		if (glm::dot(intersection, center) < 0) return hit;
 
 		glm::vec3 normal = glm::normalize(glm::vec3(intersection.x, -intersection.y, intersection.z));
+
+		if (abs(intersection.y) > 1 || (alpha >= 1/sqrt(2) && alpha <= 1)) {
+			Plane * base = new Plane(center, center);
+			Hit base_hit = base->intersect(local_coord_ray);
+
+			if (!base_hit.hit || glm::distance(base_hit.intersection, center) > 1) return hit;
+
+			intersection = base_hit.intersection;
+			normal = center;
+		}
 
 		intersection = transformationMatrix * glm::vec4(intersection, 1.0);
 		normal = normalMatrix * glm::vec4(normal, 0.0);
