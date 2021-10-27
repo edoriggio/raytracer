@@ -232,7 +232,7 @@ public:
 		glm::vec3 intersection = local_coord_ray.origin + t * local_coord_ray.direction;
 		float h = glm::dot(intersection, center);
 
-		if (glm::dot(intersection, center) < 0) return hit;
+		if (glm::dot(glm::normalize(intersection), center) < 0) return hit;
 
 		glm::vec3 normal = glm::normalize(glm::vec3(intersection.x, -intersection.y, intersection.z));
 
@@ -420,11 +420,11 @@ void sceneDefinition(float x=0, float y=12) {
 
 	// Transformation Matrices
 	glm::mat4 T1 = glm::translate(glm::vec3(5.0, 9.0, 14.0));
-	glm::mat4 S1 = glm::scale(glm::vec3(3, 12, 1));
+	glm::mat4 S1 = glm::scale(glm::vec3(3.0, 12.0, 3.0));
 	glm::mat4 M1 = T1 * S1;
 
 	glm::mat4 T2 = glm::translate(glm::vec3(6.0, -3.0, 7.0));
-	glm::mat4 S2 = glm::scale(glm::vec3(1, 3, 1));
+	glm::mat4 S2 = glm::scale(glm::vec3(1.0, 3.0, 1.0));
 	glm::mat4 R2 = glm::rotate(-0.6f * (float)M_PI, glm::vec3(0.0, 0.0, 1.0));
 	glm::mat4 M2 = T2 * R2 * S2;
 
