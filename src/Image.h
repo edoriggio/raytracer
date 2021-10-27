@@ -40,7 +40,7 @@ public:
     file << width << " " << height <<endl;
     file << 255 << endl;
 
-    for(int h = 0; h < height; h++) {
+    for (int h = 0; h < height; h++) {
       for (int w = 0; w < width; w++) {
         file << data[3 * (h*width + w)] <<" ";
         file << data[3 * (h*width + w) + 1] <<" ";
