@@ -405,6 +405,12 @@ void sceneDefinition(float x=0, float y=12) {
 	green_matte.specular = glm::vec3(0.0);
 	green_matte.shininess = 0.0;
 
+	Material yellow;
+	yellow.ambient = glm::vec3(0.02f, 0.02f, 0.02f);
+	yellow.diffuse = glm::vec3(0.9f, 0.9f, 0.2f);
+	yellow.specular = glm::vec3(0.6);
+	yellow.shininess = 80.0;
+
 	Material white;
 	white.ambient = glm::vec3(0.02f, 0.02f, 0.02f);
 	white.diffuse = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -449,7 +455,8 @@ void sceneDefinition(float x=0, float y=12) {
 	objects.push_back(new Plane(glm::vec3(0, 27.0, 0), glm::normalize(glm::vec3(0, 27.0, 0)), white));
 	objects.push_back(new Plane(glm::vec3(0, -3.0, 0), glm::normalize(glm::vec3(0, -3.0, 0)), white));
 	
-	Cone * cone1 = new Cone(blue);
+	// Cones
+	Cone * cone1 = new Cone(yellow);
 	cone1->setTransformation(M1);
 	objects.push_back(cone1);
 
