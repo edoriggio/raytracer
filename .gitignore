@@ -12,5 +12,6 @@
 a.out
 *.ppm
 out
+main
 
 .DS_Store
