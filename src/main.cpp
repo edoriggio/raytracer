@@ -195,6 +195,8 @@ public:
  Implementation of the class Object for cones
 */
 class Cone : public Object {
+private:
+	Plane * plane;
 public:
 	/**
 	 The constructor of the cone
@@ -202,58 +204,58 @@ public:
 	*/
 	Cone (Material material) {
 		this->material = material;
+		plane = new Plane(glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 1.0, 0));
 	}
 
 	Hit intersect(Ray ray) {
 		Hit hit;
 		hit.hit = false;
-
-		Ray local_coord_ray = Ray(glm::vec3(0), glm::vec3(0));
-		local_coord_ray.origin = inverseTransformationMatrix * glm::vec4(ray.origin, 1.0);
-		local_coord_ray.direction = glm::normalize(inverseTransformationMatrix * glm::vec4(ray.direction, 0.0));
-
-		float theta = (float)M_PI/4.0f;
-		glm::vec3 center = glm::vec3(0.0, -1.0, 0.0);
-		float alpha = glm::dot(glm::normalize(local_coord_ray.origin), center);
-
-		float a = pow(glm::dot(local_coord_ray.direction, center), 2) - pow(cos(theta), 2);
-		float b = 2.0 * ((glm::dot(local_coord_ray.direction, center) * glm::dot(local_coord_ray.origin, center)) - glm::dot(local_coord_ray.direction, local_coord_ray.origin) * pow(cos(theta), 2));
-		float c = pow(glm::dot(local_coord_ray.origin, center), 2) - glm::dot(local_coord_ray.origin, local_coord_ray.origin) * pow(cos(theta), 2);
-
-		float delta = pow(b, 2) - (4.0 * a * c);
-
-		if (delta < 0) return hit;
-
-		float t;
-		float t1 = (-b + sqrt(delta)) / (2 * a);
-		float t2 = (-b - sqrt(delta)) / (2 * a);
-
-		t = t1 < t2 ? t1 : t2;
-		glm::vec3 intersection = local_coord_ray.origin + t * local_coord_ray.direction;
-		float h = glm::dot(intersection, center);
-
-		if (glm::dot(glm::normalize(intersection), center) < 0) return hit;
-
-		glm::vec3 normal = glm::normalize(glm::vec3(intersection.x, -intersection.y, intersection.z));
-
-		if (abs(intersection.y) > 1 || (alpha >= 1/sqrt(2) && alpha <= 1)) {
-			Plane * base = new Plane(center, center);
-			Hit base_hit = base->intersect(local_coord_ray);
-
-			if (!base_hit.hit || glm::distance(base_hit.intersection, center) > 1) return hit;
-
-			intersection = base_hit.intersection;
-			normal = center;
+		
+		glm::vec3 d = inverseTransformationMatrix * glm::vec4(ray.direction, 0.0); //implicit cast to vec3
+		glm::vec3 o = inverseTransformationMatrix * glm::vec4(ray.origin, 1.0); //implicit cast to vec3
+		d = glm::normalize(d);
+		
+		
+		float a = d.x*d.x + d.z*d.z - d.y*d.y;
+		float b = 2 * (d.x * o.x + d.z * o.z - d.y * o.y);
+		float c = o.x * o.x + o.z * o.z - o.y * o.y;
+		
+		float delta = b*b - 4 * a * c;
+		
+		if(delta < 0){
+			return hit;
 		}
+		
+		float t1 = (-b-sqrt(delta)) / (2*a);
+		float t2 = (-b+sqrt(delta)) / (2*a);
+		
+		float t = t1;
+		hit.intersection = o + t*d;
 
-		intersection = transformationMatrix * glm::vec4(intersection, 1.0);
-		normal = normalMatrix * glm::vec4(normal, 0.0);
+		if (t < 0 || hit.intersection.y > 1 || hit.intersection.y < 0) {
+			t = t2;
+			hit.intersection = o + t*d;
 
+			if (t < 0 || hit.intersection.y > 1 || hit.intersection.y < 0) return hit;
+		}
+	
+		hit.normal = glm::vec3(hit.intersection.x, -hit.intersection.y, hit.intersection.z);
+		hit.normal = glm::normalize(hit.normal);
+		
+		Ray new_ray(o, d);
+		Hit hit_plane = plane->intersect(new_ray);
+
+		if (hit_plane.hit && hit_plane.distance < t && length(hit_plane.intersection - glm::vec3(0.0, 1.0, 0.0)) <= 1.0) {
+			hit.intersection = hit_plane.intersection;
+			hit.normal = -hit_plane.normal;
+		}
+		
 		hit.hit = true;
-		hit.distance = glm::distance(ray.origin, intersection);
-		hit.intersection = intersection;
-		hit.normal = glm::normalize(normal);
 		hit.object = this;
+		hit.intersection = transformationMatrix * glm::vec4(hit.intersection, 1.0);
+		hit.normal = (normalMatrix * glm::vec4(hit.normal, 0.0));
+		hit.normal = glm::normalize(hit.normal);
+		hit.distance = glm::length(hit.intersection - ray.origin);
 		
 		return hit;
 	}
@@ -278,6 +280,9 @@ public:
 vector<Light *> lights; ///< A list of lights in the scene
 vector<Object *> objects; ///< A list of all objects in the scene
 glm::vec3 ambient_light(1.0, 1.0, 1.0);
+
+glm::vec3 trace_ray(Ray ray);
+float compute_shadow(Ray ray, Light * source, glm::vec3 intersection);
 
 /**
  Function performing tone mapping of the intensities computed using the raytracer
@@ -312,8 +317,15 @@ glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 
 		float att_b = 0.001;
 		float att_c = 0.001;
 
+		float epsilon = 0.001;
+
 		glm::vec3 normal_source = glm::normalize(source->position - point);
 		glm::vec3 reflected = glm::normalize(2.0f * normal * glm::dot(normal, normal_source) - normal_source);
+
+		float is_occluded = glm::dot(normal_source, normal) < 0 ? 0.0 : 1.0;
+
+		Ray shadow_ray(point + epsilon * normal_source, normal_source);
+		if (is_occluded == 1.0) is_occluded = compute_shadow(shadow_ray, source, point);
 
 		float cos_alpha = glm::dot(reflected, view_direction) >= 0.0f ? glm::dot(reflected, view_direction) : 0.0;
 		float cos_phi = glm::dot(normal, normal_source) >= 0.0f ? glm::dot(normal, normal_source) : 0.0;
@@ -328,7 +340,7 @@ glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 
 		glm::vec3 specular = material.specular * pow(cos_alpha, material.shininess);
 		float attenuation = 1 / (att_a + (att_b * distance) + (att_c * pow(distance, 2)));
 
-		color += (diffuse + specular) * source->color * attenuation;
+		color += ((diffuse + specular) * source->color * attenuation) * is_occluded;
 	}
 
 	color = toneMapping(color);
@@ -337,12 +349,32 @@ glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 
 }
 
 /**
+ Function that finds if the point is occluded from light
+ @param ray Ray that should be traced through the scene
+ @param source The light source
+ @param intersection The intersection point of the object
+ @return 1 if light is not occluded, 0 if it is
+*/
+float compute_shadow(Ray ray, Light * source, glm::vec3 intersection) {
+	vector<Object *> objs = objects;
+	float light_distance = glm::distance(intersection, source->position);
+	
+	for (int k = 0; k < objs.size(); k++) {
+		Hit hit = objs[k]->intersect(ray);
+
+		if (hit.hit == true && hit.distance < light_distance)
+			return 0.0;
+	}
+
+	return 1.0;
+}
+
+/**
  Function that computes a color along the ray
  @param ray Ray that should be traced through the scene
  @return Color at the intersection point
 */
 glm::vec3 trace_ray(Ray ray) {
-	// Hit structure representing the closest intersection
 	Hit closest_hit;
 	
 	closest_hit.hit = false;
@@ -414,7 +446,7 @@ void sceneDefinition(float x=0, float y=12) {
 	Material white;
 	white.ambient = glm::vec3(0.02f, 0.02f, 0.02f);
 	white.diffuse = glm::vec3(1.0f, 1.0f, 1.0f);
-	white.specular = glm::vec3(0.0);
+	white.specular = glm::vec3(0.1);
 	white.shininess = 0.0;
 
 	// Textures
@@ -427,11 +459,12 @@ void sceneDefinition(float x=0, float y=12) {
 	// Transformation Matrices
 	glm::mat4 T1 = glm::translate(glm::vec3(5.0, 9.0, 14.0));
 	glm::mat4 S1 = glm::scale(glm::vec3(3.0, 12.0, 3.0));
-	glm::mat4 M1 = T1 * S1;
+	glm::mat4 R1 = glm::rotate(glm::radians(180.0f) , glm::vec3(1.0, 0.0, 0.0));
+	glm::mat4 M1 = T1 * S1 * R1;
 
 	glm::mat4 T2 = glm::translate(glm::vec3(6.0, -3.0, 7.0));
 	glm::mat4 S2 = glm::scale(glm::vec3(1.0, 3.0, 1.0));
-	glm::mat4 R2 = glm::rotate(-0.6f * (float)M_PI, glm::vec3(0.0, 0.0, 1.0));
+	glm::mat4 R2 = glm::rotate(glm::atan(3.0f), glm::vec3(0.0, 0.0, 1.0));
 	glm::mat4 M2 = T2 * R2 * S2;
 
 	// Normal spheres
