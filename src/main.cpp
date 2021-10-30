@@ -115,7 +115,7 @@ public:
 		hit.hit = false;
 
 		glm::vec3 d = ray.direction;
-		glm::vec3 c = center;
+		glm::vec3 c = center - ray.origin;
 
 		float D = sqrt(pow(glm::length(c), 2) - pow(glm::dot(c, d), 2));
 
@@ -126,7 +126,9 @@ public:
 		float t2 = glm::dot(c, d) - sqrt(pow(radius, 2) - pow(D, 2));
 
 		t = t1 < t2 ? t1 : t2;
-		glm::vec3 intersection = t * ray.direction;
+		glm::vec3 intersection = ray.origin + t * ray.direction;
+
+		if (t < 0) return hit;
 		
 		glm::vec3 normal = glm::normalize(intersection - c);
 
