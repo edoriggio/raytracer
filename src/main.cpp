@@ -310,42 +310,50 @@ glm::vec3 toneMapping(glm::vec3 intensity) {
 */
 glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 view_direction, Material material) {
 	glm::vec3 color = glm::vec3(0.0);
-	color += material.ambient * ambient_light;
 
-	for (Light * source : lights) {
-		glm::vec3 diffuse;
+	if (material.reflectiveness == 0.0) {
+		color += material.ambient * ambient_light;
 
-		float att_a = 1.0;
-		float att_b = 0.001;
-		float att_c = 0.001;
+		for (Light * source : lights) {
+			glm::vec3 diffuse;
 
-		float epsilon = 0.001;
+			float att_a = 1.0;
+			float att_b = 0.001;
+			float att_c = 0.001;
+			
+			float epsilon = 0.001;
 
-		glm::vec3 normal_source = glm::normalize(source->position - point);
-		glm::vec3 reflected = glm::normalize(2.0f * normal * glm::dot(normal, normal_source) - normal_source);
+			glm::vec3 normal_source = glm::normalize(source->position - point);
+			glm::vec3 reflected = glm::normalize(2.0f * normal * glm::dot(normal, normal_source) - normal_source);
 
-		float is_occluded = glm::dot(normal_source, normal) < 0 ? 0.0 : 1.0;
+			float is_occluded = glm::dot(normal_source, normal) < 0 ? 0.0 : 1.0;
 
-		Ray shadow_ray(point + epsilon * normal_source, normal_source);
-		if (is_occluded == 1.0) is_occluded = compute_shadow(shadow_ray, source, point);
+			Ray shadow_ray(point + epsilon * normal_source, normal_source);
+			if (is_occluded == 1.0) is_occluded = compute_shadow(shadow_ray, source, point);
 
-		float cos_alpha = glm::dot(reflected, view_direction) >= 0.0f ? glm::dot(reflected, view_direction) : 0.0;
-		float cos_phi = glm::dot(normal, normal_source) >= 0.0f ? glm::dot(normal, normal_source) : 0.0;
-		float distance = glm::distance(source->position, point);
+			float cos_alpha = glm::dot(reflected, view_direction) >= 0.0f ? glm::dot(reflected, view_direction) : 0.0;
+			float cos_phi = glm::dot(normal, normal_source) >= 0.0f ? glm::dot(normal, normal_source) : 0.0;
+			float distance = glm::distance(source->position, point);
 
-		if (material.texture != NULL) {
-			diffuse = material.texture(uv) * cos_phi;
-		} else {
-			diffuse = material.diffuse * cos_phi;
+			if (material.texture != NULL) {
+				diffuse = material.texture(uv) * cos_phi;
+			} else {
+				diffuse = material.diffuse * cos_phi;
+			}
+
+			glm::vec3 specular = material.specular * pow(cos_alpha, material.shininess);
+			float attenuation = 1 / (att_a + (att_b * distance) + (att_c * pow(distance, 2)));
+
+			color += ((diffuse + specular) * source->color * attenuation) * is_occluded;
 		}
 
-		glm::vec3 specular = material.specular * pow(cos_alpha, material.shininess);
-		float attenuation = 1 / (att_a + (att_b * distance) + (att_c * pow(distance, 2)));
+		color = toneMapping(color);
+	} else {
+		glm::vec3 reflected_vec = glm::reflect(-view_direction, normal);
+		Ray reflected_ray = Ray(point, glm::normalize(reflected_vec));
 
-		color += ((diffuse + specular) * source->color * attenuation) * is_occluded;
+		color = trace_ray(reflected_ray);
 	}
-
-	color = toneMapping(color);
 
 	return color;
 }
@@ -451,6 +459,9 @@ void sceneDefinition(float x=0, float y=12) {
 	white.specular = glm::vec3(0.1);
 	white.shininess = 0.0;
 
+	Material mirror;
+	mirror.reflectiveness = 1.0;
+
 	// Textures
 	Material checkerBoard;
 	checkerBoard.texture = &checkerboardTexture;
@@ -470,7 +481,8 @@ void sceneDefinition(float x=0, float y=12) {
 	glm::mat4 M2 = T2 * R2 * S2;
 
 	// Normal spheres
-	objects.push_back(new Sphere(1.0, glm::vec3(1.0, -2.0, 8.0), blue));
+	// objects.push_back(new Sphere(1.0, glm::vec3(1.0, -2.0, 8.0), blue));
+	objects.push_back(new Sphere(1.0, glm::vec3(1.0, -2.0, 8.0), mirror));
 	objects.push_back(new Sphere(0.5, glm::vec3(-1.0, -2.5, 6.0), red));
 	// objects.push_back(new Sphere(1.0, glm::vec3(3.0, -2.0, 6.0), green));
 
