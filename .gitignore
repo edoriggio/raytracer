@@ -6,8 +6,8 @@
 *.bbl
 *.blg
 
-
 .vscode
+main.dSYM
 
 a.out
 *.ppm
