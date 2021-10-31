@@ -311,6 +311,7 @@ glm::vec3 toneMapping(glm::vec3 intensity) {
 */
 glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 view_direction, Material material, bool inside_object) {
 	glm::vec3 color = glm::vec3(0.0);
+	float epsilon = 0.001;
 
 	if (material.reflectiveness > 0.0 && material.reflectiveness <= 1.0) {
 		glm::vec3 reflected_vec = glm::reflect(-view_direction, normal);
@@ -321,11 +322,8 @@ glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 
 		float beta = inside_object ? material.refractiveness : 1.0f / material.refractiveness;
 		glm::vec3 normal_to_refract = inside_object ? -normal : normal;
 
-		float dot = glm::dot(view_direction, normal_to_refract);
-		float angle = acos(dot) * 180 / M_PI;
-
 		glm::vec3 refracted_vec = glm::refract(view_direction, normal_to_refract, beta);
-		Ray refracted_ray = Ray(point, glm::normalize(refracted_vec));
+		Ray refracted_ray = Ray(point + epsilon * refracted_vec, glm::normalize(refracted_vec));
 
 		color = trace_ray(refracted_ray, true);
 	} else {
@@ -337,8 +335,6 @@ glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 
 			float att_a = 1.0;
 			float att_b = 0.001;
 			float att_c = 0.001;
-			
-			float epsilon = 0.001;
 
 			glm::vec3 normal_source = glm::normalize(source->position - point);
 			glm::vec3 reflected = glm::normalize(2.0f * normal * glm::dot(normal, normal_source) - normal_source);
