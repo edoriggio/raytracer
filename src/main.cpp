@@ -283,7 +283,7 @@ vector<Light *> lights; ///< A list of lights in the scene
 vector<Object *> objects; ///< A list of all objects in the scene
 glm::vec3 ambient_light(1.0, 1.0, 1.0);
 
-glm::vec3 trace_ray(Ray ray);
+glm::vec3 trace_ray(Ray ray, bool refractive=false);
 float compute_shadow(Ray ray, Light * source, glm::vec3 intersection);
 
 /**
@@ -307,11 +307,28 @@ glm::vec3 toneMapping(glm::vec3 intensity) {
  @param uv Texture coordinates
  @param view_direction A normalized direction from the point to the viewer/camera
  @param material A material structure representing the material of the object
+ @param inside_object Flag to check if the ray is inside or outside the object
 */
-glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 view_direction, Material material) {
+glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 view_direction, Material material, bool inside_object) {
 	glm::vec3 color = glm::vec3(0.0);
 
-	if (material.reflectiveness == 0.0) {
+	if (material.reflectiveness > 0.0 && material.reflectiveness <= 1.0) {
+		glm::vec3 reflected_vec = glm::reflect(-view_direction, normal);
+		Ray reflected_ray = Ray(point, glm::normalize(reflected_vec));
+
+		color = trace_ray(reflected_ray) * material.reflectiveness;
+	} else if (material.refractiveness > 0.0) {
+		float beta = inside_object ? material.refractiveness : 1.0f / material.refractiveness;
+		glm::vec3 normal_to_refract = inside_object ? -normal : normal;
+
+		float dot = glm::dot(view_direction, normal_to_refract);
+		float angle = acos(dot) * 180 / M_PI;
+
+		glm::vec3 refracted_vec = glm::refract(view_direction, normal_to_refract, beta);
+		Ray refracted_ray = Ray(point, glm::normalize(refracted_vec));
+
+		color = trace_ray(refracted_ray, true);
+	} else {
 		color += material.ambient * ambient_light;
 
 		for (Light * source : lights) {
@@ -348,11 +365,6 @@ glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 
 		}
 
 		color = toneMapping(color);
-	} else {
-		glm::vec3 reflected_vec = glm::reflect(-view_direction, normal);
-		Ray reflected_ray = Ray(point, glm::normalize(reflected_vec));
-
-		color = trace_ray(reflected_ray) * material.reflectiveness;
 	}
 
 	return color;
@@ -384,8 +396,10 @@ float compute_shadow(Ray ray, Light * source, glm::vec3 intersection) {
  @param ray Ray that should be traced through the scene
  @return Color at the intersection point
 */
-glm::vec3 trace_ray(Ray ray) {
+glm::vec3 trace_ray(Ray ray, bool refractive) {
 	Hit closest_hit;
+
+	bool in_obj = false;
 	
 	closest_hit.hit = false;
 	closest_hit.distance = INFINITY;
@@ -394,14 +408,16 @@ glm::vec3 trace_ray(Ray ray) {
 	for (int k = 0; k < objects.size(); k++) {
 		Hit hit = objects[k]->intersect(ray);
 
-		if (hit.hit == true && hit.distance < closest_hit.distance)
+		if (hit.hit == true && hit.distance < closest_hit.distance) {
 			closest_hit = hit;
+			in_obj = hit.object->material.refractiveness > 0.0 && refractive ? true : false;
+		}
 	}
 	
 	glm::vec3 color(0.0);
 
 	if (closest_hit.hit)
-		color = PhongModel(closest_hit.intersection, closest_hit.normal, closest_hit.uv, glm::normalize(-ray.direction), closest_hit.object->getMaterial());
+		color = PhongModel(closest_hit.intersection, closest_hit.normal, closest_hit.uv, glm::normalize(-ray.direction), closest_hit.object->getMaterial(), in_obj);
 
 	return color;
 }
@@ -462,6 +478,9 @@ void sceneDefinition(float x=0, float y=12) {
 	Material mirror;
 	mirror.reflectiveness = 1.0;
 
+	Material glass;
+	glass.refractiveness = 2.0;
+
 	// Textures
 	Material checkerBoard;
 	checkerBoard.texture = &checkerboardTexture;
@@ -480,11 +499,14 @@ void sceneDefinition(float x=0, float y=12) {
 	glm::mat4 R2 = glm::rotate(glm::atan(3.0f), glm::vec3(0.0, 0.0, 1.0));
 	glm::mat4 M2 = T2 * R2 * S2;
 
-	// Normal spheres
+	// Normal Spheres
 	// objects.push_back(new Sphere(1.0, glm::vec3(1.0, -2.0, 8.0), blue));
-	objects.push_back(new Sphere(1.0, glm::vec3(1.0, -2.0, 8.0), mirror));
 	objects.push_back(new Sphere(0.5, glm::vec3(-1.0, -2.5, 6.0), red));
 	// objects.push_back(new Sphere(1.0, glm::vec3(3.0, -2.0, 6.0), green));
+
+	// Special Spheres
+	objects.push_back(new Sphere(1.0, glm::vec3(1.0, -2.0, 8.0), mirror));
+	objects.push_back(new Sphere(2.0, glm::vec3(-3.0, -1.0, 8.0), glass));
 
 	// Textured spheres
 	// objects.push_back(new Sphere(7.0, glm::vec3(-6.0, 4.0, 23.0), checkerBoard));
