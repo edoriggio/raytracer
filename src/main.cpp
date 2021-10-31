@@ -352,7 +352,7 @@ glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 
 		glm::vec3 reflected_vec = glm::reflect(-view_direction, normal);
 		Ray reflected_ray = Ray(point, glm::normalize(reflected_vec));
 
-		color = trace_ray(reflected_ray);
+		color = trace_ray(reflected_ray) * material.reflectiveness;
 	}
 
 	return color;
