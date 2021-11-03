@@ -21,6 +21,7 @@ struct Material {
   float shininess = 0.0; ///< Exponent for Phong model
   float reflectiveness = 0.0; ///< Index representing reflectiveness
   float refractiveness = 0.0; ///< Index representing refractiveness
+  float delta = 0.0; 
   glm::vec3 (* texture)(glm::vec2 uv) = NULL; ///< Texture
 };
 
