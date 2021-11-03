@@ -116,32 +116,37 @@ public:
 
 		glm::vec3 d = ray.direction;
 		glm::vec3 c = center - ray.origin;
+		float delta = glm::dot(c, c) - glm::dot(c, d) * glm::dot(c, d);
 
-		float D = sqrt(pow(glm::length(c), 2) - pow(glm::dot(c, d), 2));
+		if (delta < 0) return hit;
+
+		float D = sqrt(delta);
 
 		if (D > radius) return hit;
 
 		float t;
-		float t1 = glm::dot(c, d) + sqrt(pow(radius, 2) - pow(D, 2));
-		float t2 = glm::dot(c, d) - sqrt(pow(radius, 2) - pow(D, 2));
+		float t1 = glm::dot(c, d) + sqrt(radius * radius - D * D);
+		float t2 = glm::dot(c, d) - sqrt(radius * radius - D * D);
 
 		t = t1 < t2 ? t1 : t2;
-		glm::vec3 intersection = ray.origin + t * ray.direction;
-
 		if (t < 0) return hit;
-		
-		glm::vec3 normal = glm::normalize(intersection - c);
 
-		float theta = asin(normal.y / radius);
+		glm::vec3 intersection = ray.origin + t * d;
+		
+		glm::vec3 normal = intersection - c;
+		normal = glm::normalize(normal);
+
+		float theta = asin(normal.y);
 		float phi = atan2(normal.z, normal.x);
 		
 		hit.hit = true;
 		hit.distance = glm::distance(ray.origin, intersection);
 		hit.intersection = intersection;
 		hit.normal = normal;
-		hit.uv.s = (phi + M_PI) / (2 * M_PI);
-		hit.uv.t = theta + (M_PI / 2);
 		hit.object = this;
+
+		hit.uv.s = (theta + M_PI / 2) / M_PI;
+		hit.uv.t = (phi + M_PI) / (2 * M_PI);
 
 		return hit;
 	}
@@ -213,30 +218,29 @@ public:
 		Hit hit;
 		hit.hit = false;
 		
-		glm::vec3 d = inverseTransformationMatrix * glm::vec4(ray.direction, 0.0); //implicit cast to vec3
-		glm::vec3 o = inverseTransformationMatrix * glm::vec4(ray.origin, 1.0); //implicit cast to vec3
+		glm::vec3 d = inverseTransformationMatrix * glm::vec4(ray.direction, 0.0);
+		glm::vec3 o = inverseTransformationMatrix * glm::vec4(ray.origin, 1.0);
 		d = glm::normalize(d);
 		
-		
-		float a = d.x*d.x + d.z*d.z - d.y*d.y;
+		float a = d.x * d.x + d.z * d.z - d.y * d.y;
 		float b = 2 * (d.x * o.x + d.z * o.z - d.y * o.y);
 		float c = o.x * o.x + o.z * o.z - o.y * o.y;
 		
-		float delta = b*b - 4 * a * c;
+		float delta = b * b - 4 * a * c;
 		
-		if(delta < 0){
+		if (delta < 0) {
 			return hit;
 		}
 		
-		float t1 = (-b-sqrt(delta)) / (2*a);
-		float t2 = (-b+sqrt(delta)) / (2*a);
+		float t1 = (-b - sqrt(delta)) / (2 * a);
+		float t2 = (-b + sqrt(delta)) / (2 * a);
 		
 		float t = t1;
-		hit.intersection = o + t*d;
+		hit.intersection = o + t * d;
 
 		if (t < 0 || hit.intersection.y > 1 || hit.intersection.y < 0) {
 			t = t2;
-			hit.intersection = o + t*d;
+			hit.intersection = o + t * d;
 
 			if (t < 0 || hit.intersection.y > 1 || hit.intersection.y < 0) return hit;
 		}
@@ -283,7 +287,7 @@ vector<Light *> lights; ///< A list of lights in the scene
 vector<Object *> objects; ///< A list of all objects in the scene
 glm::vec3 ambient_light(1.0, 1.0, 1.0);
 
-glm::vec3 trace_ray(Ray ray, bool refractive=false);
+glm::vec3 trace_ray(Ray ray, bool is_inside=false);
 float compute_shadow(Ray ray, Light * source, glm::vec3 intersection);
 
 /**
@@ -309,23 +313,28 @@ glm::vec3 toneMapping(glm::vec3 intensity) {
  @param material A material structure representing the material of the object
  @param inside_object Flag to check if the ray is inside or outside the object
 */
-glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 view_direction, Material material, bool inside_object) {
+glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 view_direction, Material material, bool is_inside) {
 	glm::vec3 color = glm::vec3(0.0);
 	float epsilon = 0.001;
 
-	if (material.reflectiveness > 0.0 && material.reflectiveness <= 1.0) {
+	if (material.is_reflective) {
 		glm::vec3 reflected_vec = glm::reflect(-view_direction, normal);
-		Ray reflected_ray = Ray(point, glm::normalize(reflected_vec));
+		reflected_vec = glm::normalize(reflected_vec);
 
-		color = trace_ray(reflected_ray) * material.reflectiveness;
-	} else if (material.refractiveness > 0.0) {
-		float beta = inside_object ? material.refractiveness : 1.0f / material.refractiveness;
-		glm::vec3 normal_to_refract = inside_object ? -normal : normal;
+		Ray reflected_ray = Ray(point + epsilon * reflected_vec, reflected_vec);
 
-		glm::vec3 refracted_vec = glm::refract(view_direction, normal_to_refract, beta);
-		Ray refracted_ray = Ray(point + epsilon * refracted_vec, glm::normalize(refracted_vec));
+		return color = trace_ray(reflected_ray) * material.reflectiveness;
+	} else if (material.is_refractive) {
+		float beta = is_inside ? material.refractiveness : 1.0f / material.refractiveness;
+		glm::vec3 direction_to_refract = is_inside ? view_direction : -view_direction; 
+		glm::vec3 normal_to_refract = is_inside ? -normal : normal;
 
-		color = trace_ray(refracted_ray, true);
+		glm::vec3 refracted_vec = glm::refract(direction_to_refract, normal_to_refract, beta);
+		refracted_vec = glm::normalize(refracted_vec);
+
+		Ray refracted_ray = Ray(point - epsilon * normal_to_refract, -normal_to_refract);
+
+		return color = trace_ray(refracted_ray, !is_inside);
 	} else {
 		color += material.ambient * ambient_light;
 
@@ -360,10 +369,8 @@ glm::vec3 PhongModel(glm::vec3 point, glm::vec3 normal, glm::vec2 uv, glm::vec3 
 			color += ((diffuse + specular) * source->color * attenuation) * is_occluded;
 		}
 
-		color = toneMapping(color);
+		return color = toneMapping(color);
 	}
-
-	return color;
 }
 
 /**
@@ -392,7 +399,7 @@ float compute_shadow(Ray ray, Light * source, glm::vec3 intersection) {
  @param ray Ray that should be traced through the scene
  @return Color at the intersection point
 */
-glm::vec3 trace_ray(Ray ray, bool refractive) {
+glm::vec3 trace_ray(Ray ray, bool is_inside) {
 	Hit closest_hit;
 
 	bool in_obj = false;
@@ -406,14 +413,13 @@ glm::vec3 trace_ray(Ray ray, bool refractive) {
 
 		if (hit.hit == true && hit.distance < closest_hit.distance) {
 			closest_hit = hit;
-			in_obj = hit.object->material.refractiveness > 0.0 && refractive ? true : false;
 		}
 	}
 	
 	glm::vec3 color(0.0);
 
 	if (closest_hit.hit)
-		color = PhongModel(closest_hit.intersection, closest_hit.normal, closest_hit.uv, glm::normalize(-ray.direction), closest_hit.object->getMaterial(), in_obj);
+		color = PhongModel(closest_hit.intersection, closest_hit.normal, closest_hit.uv, glm::normalize(-ray.direction), closest_hit.object->getMaterial(), is_inside);
 
 	return color;
 }
@@ -467,14 +473,17 @@ void sceneDefinition(float x=0, float y=12) {
 
 	Material white;
 	white.ambient = glm::vec3(0.02f, 0.02f, 0.02f);
-	white.diffuse = glm::vec3(1.0f, 1.0f, 1.0f);
+	white.diffuse = glm::vec3(0.8f, 0.8f, 0.8f);
 	white.specular = glm::vec3(0.1);
 	white.shininess = 0.0;
 
 	Material mirror;
+	mirror.is_reflective = true;
 	mirror.reflectiveness = 1.0;
+	mirror.specular = glm::vec3(0.3);
 
 	Material glass;
+	glass.is_refractive = true;
 	glass.refractiveness = 2.0;
 
 	// Textures
