@@ -9,9 +9,8 @@
 .vscode
 main.dSYM
 
-a.out
-*.ppm
-out
-main
+build
+out/*.ppm
+bin/runner
 
 .DS_Store

@@ -1,298 +1,24 @@
-/**
-@file main.cpp
-*/
-
-#include <iostream>
-#include <fstream>
-#include <cmath>
 #include <ctime>
+#include <cmath>
 #include <vector>
-#include "glm/glm.hpp"
-#include "glm/gtx/transform.hpp"
+#include <fstream>
+#include <iostream>
+#include "../lib/glm.hpp"
+#include "../lib/gtx/transform.hpp"
 
-#include "Image.h"
-#include "Material.h"
+#include "./attributes/Material.h"
+#include "./attributes/Textures.h"
+
+#include "./primitives/Ray.h"
+#include "./primitives/Image.h"
+#include "./primitives/Light.h"
+#include "./primitives/Object.h"
+
+#include "./shapes/Cone.h"
+#include "./shapes/Plane.h"
+#include "./shapes/Sphere.h"
 
 using namespace std;
-
-/**
- Class representing a single ray.
-*/
-class Ray {
-public:
-	glm::vec3 origin; ///< Origin of the ray
-	glm::vec3 direction; ///< Direction of the ray
-	
-	/**
-	 Contructor of the ray
-	 @param origin Origin of the ray
-	 @param direction Direction of the ray
-	*/
-	Ray(glm::vec3 origin, glm::vec3 direction) : origin(origin), direction(direction) {
-	}
-};
-
-class Object;
-
-/**
- Structure representing the event of hitting an object
-*/
-struct Hit {
-	bool hit; ///< Boolean indicating whether there was or there was no intersection with an object
-	glm::vec3 normal; ///< Normal vector of the intersected object at the intersection point
-	glm::vec3 intersection; ///< Point of Intersection
-	float distance; ///< Distance from the origin of the ray to the intersection point
-	Object *object; ///< A pointer to the intersected object
-	glm::vec2 uv; ///< Coordinates for computing the texture
-};
-
-/**
- General class for objects
-*/
-class Object {
-protected:
-	glm::mat4 transformationMatrix; ///< Matrix representing the transformation from the local to the global coordinate system
-	glm::mat4 inverseTransformationMatrix; ///< Matrix representing the transformation from the global to the local coordinate system
-	glm::mat4 normalMatrix; ///< Matrix for transforming normal vectors from the local to the global coordinate system
-	
-public:
-	glm::vec3 color; ///< Color of the object
-	Material material; ///< Structure describing the material of the object
-
-	/** A function computing an intersection, which returns the structure Hit */
-	virtual Hit intersect(Ray ray) = 0;
-
-	/** Function that returns the material struct of the object */
-	Material getMaterial() {
-		return material;
-	}
-
-	/**
-	 Function that set the material
-	 @param material A structure desribing the material of the object
-	*/
-	void setMaterial(Material material) {
-		this->material = material;
-	}
-
-	/**
-	 Functions for setting up all the transformation matrices
-	 @param matrix The matrix representing the transformation of the object in the global coordinates
-	*/
-	void setTransformation(glm::mat4 matrix) {
-		transformationMatrix = matrix;
-		inverseTransformationMatrix = glm::inverse(matrix);
-		normalMatrix = glm::transpose(inverseTransformationMatrix);
-	}
-};
-
-/**
- Implementation of the class Object for spheres
-*/
-class Sphere : public Object {
-private:
-	float radius; ///< Radius of the sphere
-	glm::vec3 center; ///< Center of the sphere
-
-public:
-	/**
-	 The constructor of the sphere
-	 @param radius Radius of the sphere
-	 @param center Center of the sphere
-	 @param color Color of the sphere
-	*/
-	// Sphere(float radius, glm::vec3 center, glm::vec3 color) : radius(radius), center(center) {
-	// 	this->color = color;
-	// }
-
-	// Sphere(float radius, glm::vec3 center, Material material) : radius(radius), center(center) {
-	// 	this->material = material;
-	// }
-
-	Sphere(Material material) {
-		this->material = material;
-
-		this->radius = 1.0;
-		this->center = glm::vec3(0.0);
-	}
-
-	/** Implementation of the intersection function */
-	Hit intersect(Ray ray) {
-		Hit hit;
-		hit.hit = false;
-
-		glm::vec3 d = inverseTransformationMatrix * glm::vec4(ray.direction, 0.0);
-		glm::vec3 o = inverseTransformationMatrix * glm::vec4(ray.origin, 1.0);
-		d = glm::normalize(d);
-
-		glm::vec3 c = - o;
-		float delta = glm::dot(c, c) - glm::dot(c, d) * glm::dot(c, d);
-
-		if (delta < 0) return hit;
-
-		float D = sqrt(delta);
-
-		if (D > radius) return hit;
-
-		float t;
-		float t1 = glm::dot(c, d) + sqrt(1.0f - D * D);
-		float t2 = glm::dot(c, d) - sqrt(1.0f - D * D);
-
-		t = t1 < t2 ? t1 : t2;
-		if (t < 0) return hit;
-
-		glm::vec3 intersection = o + t * d;
-		
-		glm::vec3 normal = intersection;
-		normal = glm::normalize(normal);
-
-		float theta = asin(normal.y);
-		float phi = atan2(normal.z, normal.x);
-		
-		hit.hit = true;
-		hit.intersection = transformationMatrix * glm::vec4(intersection, 1.0);
-		hit.distance = glm::distance(ray.origin, hit.intersection);
-		hit.normal = normalMatrix * glm::vec4(normal, 0.0);
-		hit.normal = glm::normalize(hit.normal);
-		hit.object = this;
-
-		hit.uv.s = (theta + M_PI / 2) / M_PI;
-		hit.uv.t = (phi + M_PI) / (2 * M_PI);
-
-		return hit;
-	}
-};
-
-/**
- Implementation of the class Object for planes
-*/
-class Plane : public Object {
-private:
-	glm::vec3 normal;
-	glm::vec3 point;
-
-public:
-	/**
-	 The constructor of the plane
-	 @param point Center of the plane
-	 @param normal Normal of the plane
-	*/
-	Plane(glm::vec3 point, glm::vec3 normal) : point(point), normal(normal) {
-	}
-
-	Plane(glm::vec3 point, glm::vec3 normal, Material material) : point(point), normal(normal) {
-		this->material = material;
-	}
-
-	Hit intersect(Ray ray) {
-		Hit hit;
-		hit.hit = false;
-		
-		float num = glm::dot(point - ray.origin, normal);
-		float denom = glm::dot(ray.direction, normal);
-
-		if (denom == 0) return hit;
-
-		float t = num / denom;
-
-		if (t < 0) return hit;
-
-		glm::vec3 intersection = ray.origin + ray.direction * t;
-
-		hit.hit = true;
-		hit.distance = glm::distance(ray.origin, intersection);
-		hit.intersection = intersection;
-		hit.normal = -normal;
-		hit.object = this;
-		
-		return hit;
-	}
-};
-
-/**
- Implementation of the class Object for cones
-*/
-class Cone : public Object {
-private:
-	Plane * plane;
-public:
-	/**
-	 The constructor of the cone
-	 @param material Material of the cone
-	*/
-	Cone (Material material) {
-		this->material = material;
-		plane = new Plane(glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 1.0, 0));
-	}
-
-	Hit intersect(Ray ray) {
-		Hit hit;
-		hit.hit = false;
-		
-		glm::vec3 d = inverseTransformationMatrix * glm::vec4(ray.direction, 0.0);
-		glm::vec3 o = inverseTransformationMatrix * glm::vec4(ray.origin, 1.0);
-		d = glm::normalize(d);
-		
-		float a = d.x * d.x + d.z * d.z - d.y * d.y;
-		float b = 2 * (d.x * o.x + d.z * o.z - d.y * o.y);
-		float c = o.x * o.x + o.z * o.z - o.y * o.y;
-		
-		float delta = b * b - 4 * a * c;
-		
-		if (delta < 0) {
-			return hit;
-		}
-		
-		float t1 = (-b - sqrt(delta)) / (2 * a);
-		float t2 = (-b + sqrt(delta)) / (2 * a);
-		
-		float t = t1;
-		hit.intersection = o + t * d;
-
-		if (t < 0 || hit.intersection.y > 1 || hit.intersection.y < 0) {
-			t = t2;
-			hit.intersection = o + t * d;
-
-			if (t < 0 || hit.intersection.y > 1 || hit.intersection.y < 0) return hit;
-		}
-	
-		hit.normal = glm::vec3(hit.intersection.x, -hit.intersection.y, hit.intersection.z);
-		hit.normal = glm::normalize(hit.normal);
-		
-		Ray new_ray(o, d);
-		Hit hit_plane = plane->intersect(new_ray);
-
-		if (hit_plane.hit && hit_plane.distance < t && length(hit_plane.intersection - glm::vec3(0.0, 1.0, 0.0)) <= 1.0) {
-			hit.intersection = hit_plane.intersection;
-			hit.normal = -hit_plane.normal;
-		}
-		
-		hit.hit = true;
-		hit.object = this;
-		hit.intersection = transformationMatrix * glm::vec4(hit.intersection, 1.0);
-		hit.normal = normalMatrix * glm::vec4(hit.normal, 0.0);
-		hit.normal = glm::normalize(hit.normal);
-		hit.distance = glm::length(hit.intersection - ray.origin);
-		
-		return hit;
-	}
-};
-
-/**
- Light class
-*/
-class Light {
-public:
-	glm::vec3 position; ///< Position of the light source
-	glm::vec3 color; ///< Color/intensity of the light source
-
-	Light(glm::vec3 position): position(position) {
-		color = glm::vec3(1.0);
-	}
-
-	Light(glm::vec3 position, glm::vec3 color): position(position), color(color) {
-	}
-};
 
 vector<Light *> lights; ///< A list of lights in the scene
 vector<Object *> objects; ///< A list of all objects in the scene
@@ -621,7 +347,7 @@ int main(int argc, const char * argv[]) {
 		sceneDefinition();
 	}
 	
-	Image image(width, height); // Create an image where we will store the result
+	Image image(width, height);
 
 	for (int i = 0; i < width; i++) {
 		for (int j = 0; j < height; j++) {
@@ -645,13 +371,8 @@ int main(int argc, const char * argv[]) {
 			cout << "I could render at " << (float)CLOCKS_PER_SEC/((float)t) << " frames per second." << endl;
 		}
 	}
-    
-	// Writing the final results of the rendering
-	if (argc >= 2) {
-		image.writeImage(argv[1]);
-	} else {
-		image.writeImage("./result.ppm");
-	}
+
+	image.writeImage("./out/result.ppm");
 
 	return 0;
 }
