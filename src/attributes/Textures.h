@@ -1,13 +1,17 @@
-//
-//  Textures.h
-//  Raytracer
-//
+#include "../../lib/glm.hpp"
 
 #ifndef Textures_h
 #define Textures_h
 
-#include "glm/glm.hpp"
-
+/**
+ * @brief Checkerboard texture
+ * 
+ * This function returns the color for each point of a
+ * checkerboard texture.
+ * 
+ * @param uv  The uv coordinates of the point
+ * @return The color of the point in the texture
+ */
 glm::vec3 checkerboardTexture(glm::vec2 uv) {
   float n = 20;
   float value = int(floor(n * uv.s) + floor(2 * n * uv.t)) % 2;
@@ -15,6 +19,15 @@ glm::vec3 checkerboardTexture(glm::vec2 uv) {
   return glm::vec3(value);
 }
 
+/**
+ * @brief Rainbow texture
+ * 
+ * This function returns the color for each point of a
+ * rainbow texture.
+ * 
+ * @param uv The uv coordinates of the point
+ * @return The color of the point in the texture
+ */
 glm::vec3 rainbowTexture(glm::vec2 uv) {
   float n = 40;
   int value = int(floor(n * uv.t + 0.5 * n * uv.s)) % 3;
