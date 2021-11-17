@@ -1,5 +1,5 @@
-#include "../../lib/glm.hpp"
 #include "Textures.h"
+#include "../../lib/glm.hpp"
 
 #ifndef Material_h
 #define Material_h

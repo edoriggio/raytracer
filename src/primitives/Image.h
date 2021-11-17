@@ -1,5 +1,5 @@
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include "../../lib/glm.hpp"
 
 #ifndef Image_h

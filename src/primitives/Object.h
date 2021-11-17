@@ -1,6 +1,6 @@
 #include "../../lib/glm.hpp"
-#include "../attributes/Material.h"
 #include "../primitives/Ray.h"
+#include "../attributes/Material.h"
 
 #ifndef Object_h
 #define Object_h
